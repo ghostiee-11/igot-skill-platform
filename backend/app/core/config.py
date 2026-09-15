@@ -37,12 +37,6 @@ class Settings(BaseSettings):
     NIM_API_KEY: str = os.getenv("NIM_API_KEY", "")
     NIM_MODEL: str = os.getenv("NIM_MODEL", "meta/llama-3.1-8b-instruct")
 
-    # Sarvam AI speech-to-text and text-to-speech for the oral board interview
-    SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
-    SARVAM_STT_MODEL: str = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
-    SARVAM_TTS_MODEL: str = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
-    SARVAM_TTS_SPEAKER: str = os.getenv("SARVAM_TTS_SPEAKER", "anand")
-
     # Pinecone vector DB for the recommendation engine's semantic search
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
     PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "igot-competency-recommendations")

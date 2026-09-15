@@ -21,7 +21,7 @@ This guide sets up the whole iGOT Karmayogi skill platform on your machine: the 
 | Chrome or Edge | recent | Needed for the AI oral board interview (camera, microphone, face analysis). |
 | Docker | optional | Isolates lab code execution. Without it, labs still run (section 9). |
 
-You also need internet access: the database (Supabase), AI models (Groq), vector search (Pinecone), speech (Sarvam), lesson videos (YouTube) and the interview's face model all run as online services.
+You also need internet access: the database (Supabase), AI models (Groq), vector search (Pinecone), lesson videos (YouTube) and the interview's face model all run as online services.
 
 ---
 
@@ -60,7 +60,6 @@ cp .env.example .env
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Fallback LLM if Groq fails. | Optional |
 | `GOOGLE_API_KEY`, `GEMINI_MODEL` | Embeddings for recommendations (`gemini-embedding-001`), and last-resort LLM fallback. Use `GEMINI_MODEL=gemini-2.5-flash`. | Yes, for recommendations |
 | `PINECONE_API_KEY`, `PINECONE_INDEX_NAME` | Vector search for personalised course recommendations. The index is created automatically. | Yes, for recommendations |
-| `SARVAM_API_KEY` | Speech-to-text and text-to-speech in the oral board interview. Falls back to the browser's speech if unset. | Recommended |
 | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase project details for the CLI and tools. | Optional |
 
 The AI client tries Groq first, then OpenAI, then Gemini, so one working key is enough to start.
@@ -219,7 +218,7 @@ To check a production build, stop the dev server first (both use the `.next` fol
 | Technical: hands-on labs | `/labs`, `/labs/<id>` | `pandas` in the backend venv. Docker optional (pulls `python:3.10-slim` on first run). | Without Docker, lab code runs with the backend's Python. Fine locally, but it is not isolated. |
 | Digital governance: cyber defense sandbox | `/digital-governance/sandbox` | `marimo` installed in `backend/venv` (from `requirements.txt`) | The page shows "The Marimo analyst console could not start" |
 | Digital governance: crisis scenarios | `/digital-governance/scenarios` | Database only | |
-| Behavioural: AI oral board interview | `/behavioural/interview` | `GROQ_API_KEY`; `SARVAM_API_KEY`; Chrome or Edge with camera and microphone allowed; internet access to `cdn.jsdelivr.net` and `storage.googleapis.com` for the face model | Template questions and estimated scores without an LLM; browser speech without Sarvam; no video signals without a camera |
+| Behavioural: AI oral board interview | `/behavioural/interview` | `GROQ_API_KEY`; Chrome or Edge with camera and microphone allowed; internet access to `cdn.jsdelivr.net` and `storage.googleapis.com` for the face model | Template questions and estimated scores without an LLM; no video signals without a camera |
 | Behavioural: case simulations | `/behavioural/cases` | Database; an LLM key to generate new cases | Existing cases still work |
 | AI quiz from documents | `/quiz` | An LLM key; `pypdf`, `python-docx`, `python-pptx` | Fill-in-the-blank questions generated without AI |
 | AI chatbot | Floating button on every page | An LLM key | |

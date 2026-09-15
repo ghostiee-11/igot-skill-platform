@@ -56,17 +56,17 @@ export default function LabsCatalogPage() {
 
   return (
     <div className="min-h-[calc(100vh-65px)] bg-slate-50">
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <header className="max-w-2xl space-y-2">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-[#0D9488]">Technical competency</p>
-            <h1 className="text-3xl font-bold text-balance text-slate-900">Hands-on labs</h1>
-            <p className="max-w-2xl text-pretty text-slate-600">
-              Practise real statistical programming tasks in a Jupyter notebook. Run your code cell by cell in a Python
-              sandbox, then submit it to be checked by automatic tests.
+      <header className="hero-gradient relative overflow-hidden px-4 py-14 text-white sm:px-6 sm:py-20 lg:px-8">
+          <div className="hero-mesh pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
+          <div className="relative mx-auto max-w-6xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-200">Technical competency</p>
+            <h1 className="mt-2 text-3xl font-bold text-balance sm:text-4xl">Hands-on labs</h1>
+            <p className="mt-3 text-sm text-pretty leading-relaxed text-white/75 sm:text-base">
+              Build practical confidence in a focused notebook workspace, then submit your work against clear automated checks.
             </p>
           </div>
-        </header>
+      </header>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
 
         <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 export function Footer() {
   const pathname = usePathname();
@@ -17,10 +18,10 @@ export function Footer() {
           © 2026 iGOT Karmayogi Bharat • Capacity Building Commission • Ministry of Statistics and Programme Implementation
         </p>
         <div className="flex flex-wrap justify-center sm:justify-end gap-x-5 gap-y-2 text-slate-400">
-          <a href="/discover" className="hover:text-slate-600 transition-colors">Privacy Policy</a>
-          <a href="/discover" className="hover:text-slate-600 transition-colors">Terms of Service</a>
-          <a href="/discover" className="hover:text-slate-600 transition-colors">National Data Governance</a>
-          <a href="/#help" className="hover:text-slate-600 transition-colors">Helpdesk</a>
+          <Link href="/discover" className="hover:text-slate-600 transition-colors">Privacy Policy</Link>
+          <Link href="/discover" className="hover:text-slate-600 transition-colors">Terms of Service</Link>
+          <Link href="/discover" className="hover:text-slate-600 transition-colors">National Data Governance</Link>
+          <Link href="/#help" className="hover:text-slate-600 transition-colors">Helpdesk</Link>
         </div>
       </div>
     </footer>

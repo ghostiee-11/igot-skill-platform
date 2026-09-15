@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -25,8 +25,7 @@ import { ApiError, fetchApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useInterviewMedia } from "@/features/behavioural/hooks/useInterviewMedia";
 import { countFillers, useSpeechCapture } from "@/features/behavioural/hooks/useSpeechCapture";
-import { useSarvamDictation } from "@/features/behavioural/hooks/useSarvamDictation";
-import { useSarvamVoice } from "@/features/behavioural/hooks/useSarvamVoice";
+import { useBrowserVoice } from "@/features/behavioural/hooks/useBrowserVoice";
 import { InterviewReport } from "@/features/behavioural/components/InterviewReport";
 import type {
   BehaviouralCourse,
@@ -112,21 +111,16 @@ export default function LiveInterviewPage() {
   const { user } = useAuth();
   const media = useInterviewMedia();
   const [draft, setDraft] = useState("");
-  const voice = useSarvamVoice();
-  const sarvamDictation = useSarvamDictation(setDraft, media.getStream);
+  const voice = useBrowserVoice();
   const browserDictation = useSpeechCapture(setDraft);
-  // Sarvam AI transcribes spoken answers; the browser recogniser is only a fallback when Sarvam is not available.
-  const speech =
-    sarvamDictation.supported && !sarvamDictation.unavailable
-      ? sarvamDictation
-      : {
-          ...browserDictation,
-          busy: false,
-          finish: async () => {
-            browserDictation.stop();
-            return draft;
-          },
-        };
+  const speech = {
+    ...browserDictation,
+    busy: false,
+    finish: async () => {
+      browserDictation.stop();
+      return draft;
+    },
+  };
 
   const [stage, setStage] = useState<Stage>("setup");
   const [courses, setCourses] = useState<BehaviouralCourse[]>([]);
@@ -149,6 +143,7 @@ export default function LiveInterviewPage() {
 
   const startedAtRef = useRef(0);
   const threadRef = useRef<HTMLDivElement>(null);
+  const speechHandoffRef = useRef(0);
 
   useEffect(() => {
     const param = Number(new URLSearchParams(window.location.search).get("courseId"));
@@ -178,15 +173,17 @@ export default function LiveInterviewPage() {
     if (thread) thread.scrollTop = thread.scrollHeight;
   }, [messages, submitting]);
 
-  const speak = (text: string, force = false) => {
-    if (!voiceOn && !force) return;
+  const speak = async (text: string, force = false, beginListening = false) => {
     // Stop dictation so the interviewer's voice is not transcribed as the answer.
     speech.stop();
-    void voice.speak(text);
+    const handoff = ++speechHandoffRef.current;
+    if (voiceOn || force) await voice.speak(text);
+    if (beginListening && handoff === speechHandoffRef.current && media.micOn) void speech.start(draft);
   };
 
   const conclude = async () => {
     if (!sessionId) return;
+    speechHandoffRef.current += 1;
     speech.stop();
     media.stop();
     setConfirmEnd(false);
@@ -226,7 +223,7 @@ export default function LiveInterviewPage() {
       setElapsed(0);
       media.resetTurn();
       setStage("room");
-      speak(res.initial_ai_question);
+      void speak(res.initial_ai_question, false, true);
     } catch (err) {
       media.stop();
       setError(errorMessage(err, "The interview could not be started."));
@@ -237,6 +234,7 @@ export default function LiveInterviewPage() {
 
   const handleSubmit = async () => {
     if (!sessionId || submitting) return;
+    speechHandoffRef.current += 1;
     voice.stop();
     // Wait for the last recorded clip to be transcribed before sending.
     const answer = (speech.listening || speech.busy ? await speech.finish() : draft).trim();
@@ -281,7 +279,7 @@ export default function LiveInterviewPage() {
         return [...next, { role: "board", text: res.ai_question }];
       });
       setPhaseName(res.phase_name);
-      speak(res.ai_question);
+      void speak(res.ai_question, false, !res.is_final_turn);
       if (res.is_final_turn) await conclude();
     } catch (err) {
       setMessages((current) => current.slice(0, -1));
@@ -293,6 +291,7 @@ export default function LiveInterviewPage() {
   };
 
   const restart = () => {
+    speechHandoffRef.current += 1;
     media.stop();
     speech.stop();
     voice.stop();
@@ -366,14 +365,17 @@ export default function LiveInterviewPage() {
             ))}
         </div>
 
-        <header className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#0D9488]">Behavioural &amp; managerial competencies</p>
-          <h1 className="mt-1 text-2xl font-bold text-balance text-slate-900">AI Oral Board Interview</h1>
-          <p className="mt-1 max-w-3xl text-sm text-pretty text-slate-600">
+        <header className="hero-gradient relative left-1/2 mt-3 w-screen -translate-x-1/2 overflow-hidden px-4 py-12 text-white sm:px-6 sm:py-16 lg:px-8">
+          <div className="hero-mesh pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
+          <div className="relative mx-auto max-w-7xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-200">Behavioural &amp; managerial competencies</p>
+          <h1 className="mt-2 text-3xl font-bold text-balance sm:text-4xl">Oral Board Interview</h1>
+          <p className="mt-3 max-w-3xl text-sm text-pretty leading-relaxed text-white/75 sm:text-base">
             {stage === "setup"
-              ? "A spoken interview with an AI board member who asks about the course you studied, follows up on what you actually say, and scores seven competencies with evidence from your answers."
+              ? "Practise a structured spoken response, receive evidence-led feedback, and build confidence for a real interview board."
               : selectedCourse?.title}
           </p>
+          </div>
         </header>
 
         {error && stage !== "concluding" && (
@@ -495,7 +497,7 @@ export default function LiveInterviewPage() {
                 </h2>
                 <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-pretty text-slate-700">
                   <li>Video is analysed in your browser and never uploaded. Only summary numbers are sent.</li>
-                  <li>Spoken answers are transcribed by Sarvam AI and the board member&apos;s voice is generated by Sarvam AI.</li>
+                  <li>Use Chrome or Edge for browser speech recognition and the board member&apos;s spoken questions.</li>
                   <li>Signals describe observable delivery only and are not used to judge emotion or character.</li>
                   <li>Camera and microphone switch off when the interview ends or you leave this page.</li>
                 </ul>

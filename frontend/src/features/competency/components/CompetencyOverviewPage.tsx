@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, FileQuestion, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, FileQuestion, RefreshCw } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -210,9 +210,9 @@ export default function CompetencyOverviewPage() {
             <div className="space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-[#1E3A8A]">
-                  <Sparkles className="size-4" aria-hidden="true" />
+                  <BookOpen className="size-4" aria-hidden="true" />
                 </span>
-                <h2 className="mt-3 text-base font-semibold text-balance text-slate-900">Close your gaps</h2>
+                <h2 className="mt-3 text-base font-semibold text-balance text-slate-900">Recommended learning</h2>
                 <p className="mt-1 text-sm text-pretty text-slate-600">Courses from the iGOT Karmayogi catalogue ranked for your weakest domains.</p>
                 <ButtonLink href="/recommendations" className="mt-4 w-full">
                   See recommendations

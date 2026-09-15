@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, X, Loader2, Minimize2, CheckCircle2, MessageSquare, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Send, Loader2, Minimize2, CircleHelp } from "lucide-react";
 import { fetchApi } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
 import { Markdown } from "@/components/shared/Markdown";
 
 interface AiAssistantWidgetProps {
@@ -18,14 +16,10 @@ interface Message {
 }
 
 export function AiAssistantWidget({ context }: AiAssistantWidgetProps) {
-  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => { setMounted(true); }, []);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -83,26 +77,20 @@ export function AiAssistantWidget({ context }: AiAssistantWidgetProps) {
     { label: "PFMS TSA", query: "What is TSA in PFMS?" },
   ];
 
-  if (!mounted) return null;
-
   return (
     <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-40" suppressHydrationWarning>
       {!isOpen ? (
         /* ── Floating Trigger Button ── */
         <button
           onClick={() => setIsOpen(true)}
-          className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full text-white flex items-center justify-center cursor-pointer select-none group animate-pulse-glow navy-teal-gradient shadow-xl border border-white/20 hover:scale-110 transition-transform duration-200 active:scale-95"
-          title="Karmayogi Learning Support Desk"
-          aria-label="Karmayogi Learning Support Desk"
+          className="relative h-11 w-11 sm:h-12 sm:w-12 rounded-xl text-white flex items-center justify-center cursor-pointer select-none group bg-[#1E3A8A] shadow-lg border border-white/20 hover:bg-[#172554] transition-colors active:scale-95"
+          title="Learning support"
+          aria-label="Learning support"
         >
-          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-white transition-transform group-hover:scale-110" />
-          {/* Online pulse dot */}
-          <span className="absolute top-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-white">
-            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-          </span>
+          <CircleHelp className="h-5 w-5 text-white" />
           {/* Tooltip */}
           <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] font-bold text-white bg-[#0C1B3D] px-2.5 py-1 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 hidden sm:block">
-            Karmayogi AI Desk
+            Learning support
           </span>
         </button>
       ) : (
@@ -116,14 +104,11 @@ export function AiAssistantWidget({ context }: AiAssistantWidgetProps) {
             <div className="relative z-10 flex items-center gap-3">
               {/* Avatar */}
               <div className="h-9 w-9 rounded-full bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
-                <Sparkles className="h-4 w-4 text-white" />
+                <CircleHelp className="h-4 w-4 text-white" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   Karmayogi Support Desk
-                  <span className="text-[9px] font-bold uppercase bg-emerald-400/30 text-emerald-200 px-1.5 py-0.5 rounded border border-emerald-400/30">
-                    Online
-                  </span>
                 </h3>
                 <p className="text-[10px] text-white/60">Statistical Guidance &amp; Course Inquiries</p>
               </div>
@@ -163,12 +148,6 @@ export function AiAssistantWidget({ context }: AiAssistantWidgetProps) {
                     <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.content}</p>
                   )}
                 </div>
-                {m.source && m.role === "assistant" && (
-                  <span className="text-[9px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
-                    <CheckCircle2 className="h-2.5 w-2.5 text-[#0D9488]" />
-                    Verified official content
-                  </span>
-                )}
               </div>
             ))}
 

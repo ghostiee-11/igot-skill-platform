@@ -1,8 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Depends, Query, File, Form, UploadFile, Response
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_active_user
+from app.core.security import get_current_user
 from app.models.models import Course, User
 from app.agents.igot.client import domain_category_filter
 from .schemas import (
@@ -20,8 +20,7 @@ from .schemas import (
     InterviewTurnRequest,
     InterviewTurnResponse,
     InterviewEndRequest,
-    InterviewAnalysisResponse,
-    SpeechSynthesisRequest
+    InterviewAnalysisResponse
 )
 from .services.corpus import get_all_documents, get_document_by_id
 from .services.carryforward_generator import (
@@ -35,7 +34,6 @@ from .services.carryforward_generator import (
 from .services.carryforward_session import CarryforwardSessionManager
 from .services.interview_service import InterviewSessionManager
 from .services.result_store import save_behavioural_result
-from .services import sarvam_speech
 
 router = APIRouter(prefix="/behavioural", tags=["behavioural_cgp"])
 
@@ -285,33 +283,3 @@ def conclude_and_analyze_interview(session_id: str, db: Session = Depends(get_db
         result_payload=analysis.model_dump(),
     )
     return analysis
-
-
-# --- Sarvam AI speech for the interview (the API key never reaches the browser) ---
-
-@router.post("/speech/transcribe")
-def transcribe_answer_audio(
-    file: UploadFile = File(...),
-    language_code: str = Form("en-IN"),
-    current_user: User = Depends(get_current_active_user),
-):
-    """Transcribes one recorded answer clip (up to about 30 seconds) with Sarvam speech-to-text."""
-    try:
-        return sarvam_speech.transcribe(
-            file.file.read(),
-            file.filename or "answer.webm",
-            file.content_type or "audio/webm",
-            language_code,
-        )
-    except sarvam_speech.SpeechServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-
-
-@router.post("/speech/synthesize")
-def synthesize_board_voice(req: SpeechSynthesisRequest, current_user: User = Depends(get_current_active_user)):
-    """Speaks a board member message with Sarvam text-to-speech and returns MP3 audio."""
-    try:
-        audio = sarvam_speech.synthesize(req.text, req.language_code)
-    except sarvam_speech.SpeechServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})

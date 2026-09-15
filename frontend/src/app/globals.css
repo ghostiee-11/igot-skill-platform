@@ -364,3 +364,44 @@ video {
     transition: none;
   }
 }
+
+/* Platform emphasis: colour belongs to moments of orientation and action, not
+   every card. This late override restores a confident institutional hero for
+   all competency hubs while their workspaces remain calm and readable. */
+.hero-gradient {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(20, 184, 166, 0.28), transparent 28%),
+    radial-gradient(circle at 74% 90%, rgba(234, 179, 8, 0.16), transparent 30%),
+    linear-gradient(135deg, #070e20 0%, #0c1b3d 48%, #1e3a8a 100%);
+  color: #ffffff;
+  border-bottom-color: rgba(30, 58, 138, 0.75);
+}
+
+.hero-gradient :is(.text-white):not(:where(.navy-teal-gradient, .navy-teal-gradient *, .keep-on-dark, .keep-on-dark *, .bg-\[\#0C1B3D\])) { color: #ffffff; }
+.hero-gradient :is(.text-white\/90, .text-white\/80) { color: rgba(255, 255, 255, 0.9); }
+.hero-gradient :is(.text-white\/70, .text-white\/60) { color: rgba(255, 255, 255, 0.72); }
+.hero-gradient :is(.text-white\/50, .text-white\/40, .text-white\/35) { color: rgba(255, 255, 255, 0.56); }
+.hero-gradient :is(.text-teal-300, .text-teal-400) { color: #99f6e4; }
+.hero-gradient :is(.text-amber-300, .text-amber-400) { color: #fde68a; }
+.hero-gradient .glass-light:not(:where(.keep-on-dark *)), .hero-gradient .glass-card:not(:where(.keep-on-dark *)) { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+.hero-gradient :is(.border-white\/10, .border-white\/15, .border-white\/20, .border-white\/30):not(:where(.keep-on-dark *)) { border-color: rgba(255, 255, 255, 0.2); }
+
+/* The public landing page carries white type and needs a stable, independent
+   background even when other hero utilities evolve. */
+.landing-hero {
+  background:
+    radial-gradient(circle at 12% 16%, rgba(37, 99, 235, 0.34), transparent 34%),
+    radial-gradient(circle at 86% 78%, rgba(13, 148, 136, 0.25), transparent 30%),
+    linear-gradient(128deg, #070e20 0%, #0c1b3d 52%, #173e78 100%) !important;
+  border-bottom-color: rgba(30, 58, 138, 0.75);
+}
+
+.landing-hero.hero-mesh {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 12% 16%, rgba(37, 99, 235, 0.34), transparent 34%),
+    radial-gradient(circle at 86% 78%, rgba(13, 148, 136, 0.25), transparent 30%),
+    linear-gradient(128deg, #070e20 0%, #0c1b3d 52%, #173e78 100%) !important;
+  background-size: 40px 40px, 40px 40px, auto, auto, auto;
+}

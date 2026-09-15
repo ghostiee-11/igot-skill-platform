@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
   Compass,
   ArrowRight,
@@ -13,17 +14,14 @@ import {
   GraduationCap,
   ClipboardCheck,
   Award,
-  BookOpen,
   HelpCircle,
   FileText,
-  MessageSquare,
   Download,
   PhoneCall,
   Mail,
   CheckCircle2,
   Clock,
   Building2,
-  TrendingUp,
   Shield,
   Zap,
 } from "lucide-react";
@@ -105,7 +103,7 @@ export default function EntryLandingPage() {
           ════════════════════════════════════════════════ */}
       <section
         id="hero"
-        className="scroll-mt-16 sm:scroll-mt-[68px] min-h-0 lg:min-h-[calc(100vh-68px)] flex flex-col justify-center hero-gradient hero-mesh py-8 sm:py-16 relative overflow-hidden"
+        className="landing-hero scroll-mt-16 sm:scroll-mt-[68px] min-h-0 lg:min-h-[calc(100vh-68px)] flex flex-col justify-center hero-gradient hero-mesh py-8 sm:py-16 relative overflow-hidden"
       >
         {/* Radial glow orb — top-left */}
         <div className="absolute -top-24 -left-24 w-[280px] sm:w-[480px] h-[280px] sm:h-[480px] max-w-full rounded-full bg-[#1E3A8A]/30 blur-[100px] pointer-events-none" />
@@ -608,7 +606,7 @@ export default function EntryLandingPage() {
                 <span>•</span>
                 <a href="/discover" className="hover:text-white/70 transition-colors">{t("cta.dataGov")}</a>
                 <span>•</span>
-                <a href="/#help" className="hover:text-white/70 transition-colors">{t("cta.helpdesk")}</a>
+                <Link href="/#help" className="hover:text-white/70 transition-colors">{t("cta.helpdesk")}</Link>
               </div>
             </div>
           </div>

@@ -548,46 +548,16 @@ export default function CyberSandboxPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-      {/* Institutional Top Ribbon */}
-      <div className="bg-[#1E3A8A] text-white py-2 px-4 border-b border-blue-900 text-xs font-medium">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="bg-amber-400 text-blue-950 font-bold px-2 py-0.5 rounded tracking-wide text-[10px] uppercase">
-              CERT-In & NeGD Accredited
-            </span>
-            <span>
-              National Cyber Defense & Digital Governance Hands-On Range
-              (TryHackMe / HTB Paradigm)
-            </span>
-          </div>
-          <div className="flex items-center space-x-4 text-slate-200">
-            <span className="flex items-center gap-1">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
-              IT Act 2000 Sec 70B
-            </span>
-            <span className="flex items-center gap-1">
-              <Cpu className="h-3.5 w-3.5 text-emerald-400" />
-              Isolated Marimo Sandboxes
-            </span>
-            <span className="flex items-center gap-1 text-slate-200">
-              <Key className="h-3.5 w-3.5 text-amber-300" />
-              CERT-In Guidelines Compliant
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Hero Banner */}
-      <div className="hero-gradient relative overflow-hidden text-white py-8 px-4 sm:px-6 lg:px-8 shadow-md">
+    <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
+      <div className="hero-gradient relative overflow-hidden px-4 py-12 text-white sm:px-6 lg:px-8">
         <div className="absolute inset-0 hero-mesh opacity-40 pointer-events-none" />
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 glass-light border border-white/20 rounded-full px-3 py-1 text-xs text-teal-300 font-bold uppercase tracking-wider mb-3">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-teal-200">
                 <Terminal className="h-3.5 w-3.5 text-teal-300" />
                 <span>
-                  CTF Incident Response Range &amp; Interactive Notebook Sandboxes
+                  Digital governance · practical investigation
                 </span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">

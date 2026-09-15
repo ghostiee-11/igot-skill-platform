@@ -73,7 +73,7 @@ export default function QuizHubPage() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
       <header className="space-y-2">
-        <p className="text-sm font-medium text-[#1E3A8A]">Intelligent assessment engine</p>
+        <p className="text-sm font-medium text-[#1E3A8A]">Assessment workspace</p>
         <h1 className="text-3xl font-bold text-balance text-slate-900">Quizzes from your learning material</h1>
         <p className="max-w-2xl text-pretty text-slate-600">
           Upload a document, presentation, or video transcript and get multiple-choice questions with explanations and instant feedback.

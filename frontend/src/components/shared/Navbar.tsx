@@ -58,7 +58,6 @@ export function Navbar() {
   // Track active section via scroll position on landing page when unauthenticated
   useEffect(() => {
     if (user || pathname !== "/") {
-      setActiveSection("");
       return;
     }
 
@@ -163,15 +162,13 @@ export function Navbar() {
     },
     {
       href: "/quiz",
-      label: "AI Quiz",
+      label: "Quiz",
       icon: FileQuestion,
     },
     {
       href: "/behavioural/interview",
-      label: t("nav.oralBoard") || "AI Oral Board",
+      label: t("nav.oralBoard") || "Oral Board",
       icon: Video,
-      badge: "AI",
-      badgeColor: "bg-teal-50 text-teal-700 border-teal-200",
     },
     {
       href: "/statistical",

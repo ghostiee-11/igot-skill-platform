@@ -13,6 +13,7 @@ venv/
 **/.venv/
 pyvenv.cfg
 **/pyvenv.cfg
+backend/.python313/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -30,6 +31,8 @@ dist/
 *.sqlite
 *.sqlite3
 backend/karmayogi.db
+backend/backend-server*.log
+python-3.13.1-amd64.exe
 
 # Scraped content cache (lives in Supabase, not git)
 content-pipeline/content/
