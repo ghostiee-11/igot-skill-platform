@@ -42,6 +42,7 @@ class NextQuestionRequest(BaseModel):
     competency_id: str = "price_statistics"
     preferred_skill_id: Optional[str] = None
     current_difficulty: Optional[QuestionDifficulty] = None
+    question_type: Optional[QuestionType] = None
 
 class SubmitAnswerRequest(BaseModel):
     user_id: str

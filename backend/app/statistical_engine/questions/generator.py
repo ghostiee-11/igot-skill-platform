@@ -202,8 +202,10 @@ class QuestionGenerator:
         """
         templates = self.find_templates_by_skill(skill_id, difficulty, question_type)
         if not templates:
-            # Try without difficulty filter
-            templates = self.find_templates_by_skill(skill_id)
+            # Difficulty is advisory for adaptive progression; question format is
+            # a hard contract with the client. Retain it when relaxing the
+            # difficulty so a requested graph item can never become an MCQ.
+            templates = self.find_templates_by_skill(skill_id, question_type=question_type)
         if not templates:
             raise QuestionGenerationException(f"No question templates found for skill '{skill_id}'.")
 
@@ -237,6 +239,23 @@ class QuestionGenerator:
             chart_obj = chart_generator.create_cpi_trend_chart(
                 years=[2020, 2021, 2022, 2023],
                 cpi_values=[cpi_2020, cpi_2021, cpi_2022, cpi_2023]
+            )
+        elif operation == "cpi_weighted_contribution_max":
+            contributions = {
+                "Food": round(params["rel_food"] * params["w_food"] / 100, 2),
+                "Housing": round(params["rel_housing"] * params["w_housing"] / 100, 2),
+                "Fuel & Light": round(params["rel_fuel"] * params["w_fuel"] / 100, 2),
+            }
+            calc_result_value = max(contributions, key=contributions.get)
+            params.update({"food_contribution": contributions["Food"], "housing_contribution": contributions["Housing"], "fuel_contribution": contributions["Fuel & Light"]})
+            chart_obj = chart_generator.create_spec(
+                chart_type="bar",
+                title="CPI basket contribution by commodity group",
+                description="Weighted index-point contributions calculated from the expenditure basket.",
+                x_field="category", x_label="Commodity group",
+                y_field="contribution", y_label="Weighted contribution (index points)",
+                data=[{"category": category, "contribution": value} for category, value in contributions.items()],
+                unit="index_points",
             )
         else:
             calc_res = price_stats_module.calculate(operation=operation, inputs=params)
@@ -276,6 +295,16 @@ class QuestionGenerator:
                     options_list.append(MCQOption(id=opt_id, text=f"Year {y_str}"))
                     options_map[opt_id] = (y_str, "err.chart.wrong_year" if y_str != correct_val_str else None)
                     if y_str == correct_val_str:
+                        correct_option_id = opt_id
+            elif operation == "cpi_weighted_contribution_max":
+                categories = ["Food", "Housing", "Fuel & Light"]
+                rng.shuffle(categories)
+                options_list = []
+                for idx, category in enumerate(categories):
+                    opt_id = chr(65 + idx)
+                    options_list.append(MCQOption(id=opt_id, text=category))
+                    options_map[opt_id] = (category, "err.chart.ignored_weight" if category != calc_result_value else None)
+                    if category == calc_result_value:
                         correct_option_id = opt_id
             else:
                 # Generate numerical distractors

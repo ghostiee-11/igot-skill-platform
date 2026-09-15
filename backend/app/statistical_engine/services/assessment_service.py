@@ -54,7 +54,8 @@ class AssessmentService:
         user_id: str,
         competency_id: str = "price_statistics",
         preferred_skill_id: Optional[str] = None,
-        current_difficulty: Optional[QuestionDifficulty] = None
+        current_difficulty: Optional[QuestionDifficulty] = None,
+        question_type: Optional[QuestionType] = None,
     ) -> QuestionInstance:
         learner_repo = SQLLearnerRepository(db)
         competency = competency_graph.get_competency(competency_id)
@@ -67,7 +68,19 @@ class AssessmentService:
             requested_difficulty=current_difficulty
         )
 
-        return self.generate_question(db, skill_id=target_skill, difficulty=diff)
+        # A visual-question request must resolve to a skill that actually has a
+        # chart template. This keeps the adaptive endpoint deterministic while
+        # allowing the portal to deliberately practice graph interpretation.
+        if question_type:
+            compatible_skills = [
+                skill["id"]
+                for skill in competency.get("skills", [])
+                if question_generator.find_templates_by_skill(skill["id"], question_type=question_type)
+            ]
+            if compatible_skills:
+                target_skill = preferred_skill_id if preferred_skill_id in compatible_skills else compatible_skills[0]
+
+        return self.generate_question(db, skill_id=target_skill, difficulty=diff, question_type=question_type)
 
     def submit_answer(
         self,

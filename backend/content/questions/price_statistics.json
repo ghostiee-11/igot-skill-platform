@@ -156,6 +156,24 @@
         {"type": "base_year_assumption", "misconception_id": "err.chart.base_period_confusion", "description": "Selected base year"}
       ],
       "explanation_template": "Comparing the annual changes: 2021 increase = {diff_2021:.1f}, 2022 increase = {diff_2022:.1f}, 2023 increase = {diff_2023:.1f}. The largest annual increase was recorded in {answer}."
+    },
+    {
+      "template_id": "price.chart.contribution.bar.001",
+      "skill_id": "price.cpi.weighted_price_relatives",
+      "type": "chart_interpretation",
+      "difficulty": "intermediate",
+      "prompt_template": "The bar graph shows each commodity group's weighted contribution to the CPI. Which group contributes the largest number of index points to the aggregate CPI?",
+      "parameters": {
+        "rel_food": {"type": "integer", "min": 115, "max": 140, "step": 5},
+        "rel_housing": {"type": "integer", "min": 105, "max": 130, "step": 5},
+        "rel_fuel": {"type": "integer", "min": 120, "max": 150, "step": 5},
+        "w_food": {"type": "integer", "min": 40, "max": 50, "step": 5},
+        "w_housing": {"type": "integer", "min": 25, "max": 35, "step": 5},
+        "w_fuel": {"type": "integer", "min": 20, "max": 30, "step": 5}
+      },
+      "operation": "cpi_weighted_contribution_max",
+      "unit": "commodity_group",
+      "explanation_template": "Compare the weighted contributions shown in the bar graph: Food = {food_contribution:.2f}, Housing = {housing_contribution:.2f}, Fuel & Light = {fuel_contribution:.2f}. The largest contribution is {answer}."
     }
   ]
 }

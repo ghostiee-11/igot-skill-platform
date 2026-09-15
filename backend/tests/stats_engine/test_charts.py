@@ -23,5 +23,21 @@ def test_chart_question_generation():
     )
     assert q.type == QuestionType.CHART_INTERPRETATION
     assert q.chart is not None
-    assert q.chart.type == "line"
-    assert len(q.options) == 4
+    assert q.chart.type in {"line", "bar"}
+    assert len(q.options) >= 3
+
+
+def test_bar_chart_question_generation():
+    """The visual-question bank includes an interpretable CPI basket bar graph."""
+    for seed in range(1, 30):
+        q, _ = question_generator.generate_question(
+            skill_id="price.cpi.weighted_price_relatives",
+            question_type=QuestionType.CHART_INTERPRETATION,
+            seed=seed,
+        )
+        if q.chart and q.chart.type == "bar":
+            assert q.chart.xAxis.field == "category"
+            assert q.chart.yAxis.field == "contribution"
+            assert len(q.options) == 3
+            return
+    pytest.fail("No bar-chart template was selected from the visual question bank")

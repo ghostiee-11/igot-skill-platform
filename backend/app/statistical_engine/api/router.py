@@ -84,7 +84,8 @@ def get_next_adaptive_question(req: NextQuestionRequest, db: Session = Depends(g
             user_id=req.user_id,
             competency_id=req.competency_id,
             preferred_skill_id=req.preferred_skill_id,
-            current_difficulty=req.current_difficulty
+            current_difficulty=req.current_difficulty,
+            question_type=req.question_type,
         )
     except StatisticalEngineException as e:
         raise HTTPException(
