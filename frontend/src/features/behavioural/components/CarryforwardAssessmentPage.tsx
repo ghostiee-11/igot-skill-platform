@@ -410,7 +410,7 @@ export default function CarryforwardAssessmentPage() {
                 </span>
               </div>
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Case-Based Carryforward Inquiries
+                Practise better administrative decisions.
               </h1>
               <p className="mt-1 text-sm text-slate-600 max-w-3xl">
                 Real administrative decisions derived from authentic Government Notices, Statutory Forms, and
@@ -425,7 +425,7 @@ export default function CarryforwardAssessmentPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-white border border-[#1E3A8A]/30 px-3.5 py-2 text-xs font-bold text-[#1E3A8A] shadow-xs hover:bg-blue-50/50 transition-all"
               >
                 <Clock className="h-4 w-4 text-[#0D9488]" />
-                Switch to Live AI Interview
+                Live interview
               </Link>
             </div>
           </div>
@@ -442,7 +442,7 @@ export default function CarryforwardAssessmentPage() {
             >
               <span className="flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
-                Interactive Case Simulator
+                Case practice
               </span>
             </button>
             <button
@@ -455,7 +455,7 @@ export default function CarryforwardAssessmentPage() {
             >
               <span className="flex items-center gap-1.5">
                 <BookOpen className="h-4 w-4" />
-                Government Document Corpus ({corpus.length})
+                Sources
               </span>
             </button>
             <button
@@ -468,7 +468,7 @@ export default function CarryforwardAssessmentPage() {
             >
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4 text-[#0D9488]" />
-                Notice & Form Ingestion Studio
+                Create case
               </span>
             </button>
           </div>

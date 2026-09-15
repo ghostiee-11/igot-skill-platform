@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -39,7 +39,6 @@ export default function LabsCatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [difficulty, setDifficulty] = useState<(typeof DIFFICULTIES)[number]>("all");
-  const [skill, setSkill] = useState("all");
 
   useEffect(() => {
     fetchApi<LabDetail[]>("/technical-courses/labs")
@@ -47,27 +46,18 @@ export default function LabsCatalogPage() {
       .catch((err: Error) => setError(err.message));
   }, []);
 
-  // Skill chips come from the labs themselves, most common first.
-  const skills = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const lab of labs ?? []) for (const tag of lab.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([tag]) => tag);
-  }, [labs]);
-
   const filtered = (labs ?? []).filter((lab) => {
     const text = `${lab.title} ${lab.objective}`.toLowerCase();
     return (
       text.includes(query.trim().toLowerCase()) &&
-      (difficulty === "all" || lab.difficulty === difficulty) &&
-      (skill === "all" || (lab.tags ?? []).includes(skill))
+      (difficulty === "all" || lab.difficulty === difficulty)
     );
   });
-  const totalTests = (labs ?? []).reduce((sum, lab) => sum + (lab.test_cases_count ?? lab.test_cases?.length ?? 0), 0);
 
   return (
     <div className="min-h-[calc(100vh-65px)] bg-slate-50">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <header className="max-w-2xl space-y-2">
           <div className="space-y-2">
             <p className="text-sm font-medium text-[#0D9488]">Technical competency</p>
             <h1 className="text-3xl font-bold text-balance text-slate-900">Hands-on labs</h1>
@@ -76,20 +66,6 @@ export default function LabsCatalogPage() {
               sandbox, then submit it to be checked by automatic tests.
             </p>
           </div>
-          {labs && (
-            <dl className="grid grid-cols-3 gap-3 text-center sm:w-96">
-              {[
-                ["Labs", labs.length],
-                ["Graded tests", totalTests],
-                ["Language", "Python"],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-slate-200 bg-white p-3">
-                  <dt className="text-xs text-slate-500">{label}</dt>
-                  <dd className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
         </header>
 
         <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
@@ -125,24 +101,6 @@ export default function LabsCatalogPage() {
               ))}
             </div>
           </div>
-          {skills.length > 0 && (
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Skill">
-              {["all", ...skills].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  role="radio"
-                  aria-checked={skill === tag}
-                  onClick={() => setSkill(tag)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                    skill === tag ? "border-[#1E3A8A] bg-blue-50 text-[#1E3A8A]" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {tag === "all" ? "All skills" : tag}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {error && <ErrorNotice message={error} />}

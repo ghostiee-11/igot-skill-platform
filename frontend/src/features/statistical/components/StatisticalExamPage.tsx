@@ -40,7 +40,12 @@ export default function StatisticalExamPage() {
 
   useEffect(() => { if (result || loading) return; const timer = window.setInterval(() => setTimeTaken((value) => value + 1), 1000); return () => window.clearInterval(timer); }, [loading, result]);
   const fetchNextQuestion = async (nextMode = mode, targetSkillId?: string | null) => { setLoading(true); setError(null); setResult(null); setSelectedOption(null); setNumericAnswer(""); setTimeTaken(0); try { const data = await fetchApi<QuestionInstance>("/questions/next", { method: "POST", body: JSON.stringify({ user_id: userId, competency_id: "price_statistics", preferred_skill_id: targetSkillId || (nextMode === "adaptive" ? preferredSkillId : undefined), question_type: nextMode === "chart" ? "chart_interpretation" : undefined }) }); setQuestion(data); } catch (requestError) { setQuestion(null); setError(requestError instanceof Error ? requestError.message : "The adaptive engine could not prepare a question."); } finally { setLoading(false); } };
-  useEffect(() => { void fetchNextQuestion("adaptive"); }, []);
+  useEffect(() => {
+    // Defer the initial request so React's effect remains a subscription setup,
+    // not a synchronous state-update cascade.
+    const request = window.setTimeout(() => void fetchNextQuestion("adaptive"), 0);
+    return () => window.clearTimeout(request);
+  }, []);
   const switchMode = (nextMode: QuestionMode) => { setMode(nextMode); void fetchNextQuestion(nextMode); };
   const handleSubmit = async () => { if (!question || submitting) return; const submittedAnswer = question.options?.length ? selectedOption : numericAnswer.trim(); if (!submittedAnswer) return; setSubmitting(true); setError(null); try { const response = await fetchApi<AnswerSubmissionResponse>("/questions/submit", { method: "POST", body: JSON.stringify({ user_id: userId, question_id: question.question_id, submitted_answer: submittedAnswer, time_taken_seconds: timeTaken }) }); setResult(response); setAnswered((value) => value + 1); setMastery((values) => ({ ...values, [response.mastery.skill_id]: response.mastery.score })); setPreferredSkillId(response.next.target_skill_id || null); if (response.correct) { setCorrectCount((value) => value + 1); setStreak((value) => value + 1); confetti({ particleCount: 42, spread: 55, origin: { y: 0.7 }, colors: ["#1E3A8A", "#EAB308", "#0F766E"] }); } else setStreak(0); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "We could not evaluate that answer. Please try again."); } finally { setSubmitting(false); } };
   const canSubmit = Boolean(question && (question.options?.length ? selectedOption : numericAnswer.trim()));
