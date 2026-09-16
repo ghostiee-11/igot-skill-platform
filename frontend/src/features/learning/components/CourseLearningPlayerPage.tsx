@@ -288,7 +288,7 @@ function LearningPlayerContent() {
 
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs capitalize">
-              {currentLesson.content_type} • {currentLesson.duration_minutes} Minutes
+              {currentLesson.content_type} {"\u2022"} {currentLesson.duration_minutes} min
             </Badge>
             {currentLesson.completed && (
               <Badge variant="success" className="text-xs inline-flex items-center gap-1">

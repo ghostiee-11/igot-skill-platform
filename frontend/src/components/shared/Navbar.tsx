@@ -333,7 +333,8 @@ export function Navbar() {
           <button
             type="button"
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:text-[#1E3A8A] hover:border-[#1E3A8A]/40 hover:bg-blue-50/50 transition-all cursor-pointer shrink-0 ml-1"
+            aria-label={language === "en" ? "Switch interface to Hindi" : "Switch interface to English"}
+            className="ml-1 flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:border-[#1E3A8A]/40 hover:bg-blue-50 hover:text-[#1E3A8A]"
             title={language === "en" ? "हिन्दी में बदलें" : "Switch to English"}
           >
             <Languages className="h-3.5 w-3.5 text-[#0D9488]" />
@@ -566,7 +567,8 @@ export function Navbar() {
                 toggleLanguage();
                 setMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              aria-label={language === "en" ? "Switch interface to Hindi" : "Switch interface to English"}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-[#1E3A8A]/40 hover:bg-blue-50 hover:text-[#1E3A8A]"
             >
               <span className="flex items-center gap-2">
                 <Languages className="h-4 w-4 text-slate-500" />

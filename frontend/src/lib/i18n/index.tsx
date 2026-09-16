@@ -522,6 +522,7 @@ const translations: Translations = {
   "course.startLearning": { en: "Start Learning", hi: "सीखना शुरू करें" },
   "course.continue": { en: "Continue Learning", hi: "अध्ययन जारी रखें" },
   "course.resume": { en: "Resume Coursework", hi: "अध्ययन जारी रखें" },
+  "course.resumeCourse": { en: "Resume Course", hi: "पाठ्यक्रम जारी रखें" },
   "course.syllabus": {
     en: "Course Syllabus & Curriculum",
     hi: "पाठ्यक्रम रूपरेखा एवं विषय-सूची",
@@ -545,6 +546,11 @@ const translations: Translations = {
     en: "Course Materials Breakdown",
     hi: "पाठ्यक्रम सामग्री विवरण",
   },
+  "course.materialsIncluded": { en: "Materials included", hi: "शामिल सामग्री" },
+  "course.readings": { en: "Readings", hi: "पठन सामग्री" },
+  "course.videos": { en: "Videos", hi: "वीडियो" },
+  "course.officialCertificate": { en: "Official certificate", hi: "आधिकारिक प्रमाणपत्र" },
+  "course.accredited": { en: "Accredited", hi: "मान्यताप्राप्त" },
   "course.videoLectures": { en: "Video Lectures", hi: "वीडियो व्याख्यान" },
   "course.readingModules": { en: "Reading Modules", hi: "पठन मॉड्यूल" },
   "course.practicalLabs": {

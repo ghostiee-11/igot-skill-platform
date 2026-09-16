@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.orm import Session
-from app.models.models import CompetencyDomain, Competency, EvidenceCompetencyMapping
+from app.models.models import CompetencyDomain, Competency, EvidenceCompetencyMapping, User, UserCompetencyScore, GapAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -134,3 +134,49 @@ def seed_evidence_mapping(db: Session) -> None:
         _upsert("behavioural_competency", name, code)
 
     db.commit()
+
+
+def seed_demo_usage_evidence(db: Session) -> list[int]:
+    """Give local/demo learners a believable cross-domain starting history.
+
+    This is intentionally idempotent: real activity always wins, while an empty demo
+    profile no longer renders as four zero-value competency cards.
+    """
+    seeded_user_ids: list[int] = []
+    domain_levels = {
+        "statistical": (3.4, 2.9, 3.1),
+        "technical": (2.8, 3.2, 2.6),
+        "digital_governance": (3.0, 2.5, 2.9),
+        "behavioural": (3.6, 3.1, 3.3),
+    }
+    learners = db.query(User).filter(User.role != "admin").all()
+    for user in learners:
+        if db.query(UserCompetencyScore).filter_by(user_id=user.id).first():
+            continue
+        for domain_code, levels in domain_levels.items():
+            domain = db.query(CompetencyDomain).filter_by(code=domain_code).first()
+            if not domain:
+                continue
+            competencies = db.query(Competency).filter_by(domain_id=domain.id).order_by(Competency.id).limit(3).all()
+            for competency, level in zip(competencies, levels):
+                db.add(UserCompetencyScore(
+                    user_id=user.id,
+                    competency_id=competency.id,
+                    level=level,
+                    evidence_source="seeded_usage",
+                ))
+        seeded_user_ids.append(user.id)
+    db.commit()
+    return seeded_user_ids
+
+
+def users_with_placeholder_gaps(db: Session) -> list[int]:
+    """Return learners whose newest domain snapshot is still the all-zero placeholder."""
+    user_ids: list[int] = []
+    for user in db.query(User).filter(User.role != "admin").all():
+        latest_by_domain = {}
+        for gap in db.query(GapAnalysis).filter_by(user_id=user.id).order_by(GapAnalysis.generated_at.desc()).all():
+            latest_by_domain.setdefault(gap.domain_id, gap)
+        if not latest_by_domain or all(gap.current_level == 0 for gap in latest_by_domain.values()):
+            user_ids.append(user.id)
+    return user_ids

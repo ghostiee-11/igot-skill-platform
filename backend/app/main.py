@@ -4,7 +4,8 @@ from app.core.config import settings
 import threading
 from app.core.database import engine, Base, SessionLocal, warm_connection_pool
 from app.core.seed_data import seed_database
-from app.core.seed_competencies import seed_competency_taxonomy, seed_evidence_mapping
+from app.core.seed_competencies import seed_competency_taxonomy, seed_evidence_mapping, seed_demo_usage_evidence, users_with_placeholder_gaps
+from app.agents.competency.gap_agent import run_gap_analysis
 
 # Import routers
 from app.modules.digital_governance.router import router as digital_governance_router
@@ -34,6 +35,9 @@ try:
     seed_database(db)
     seed_competency_taxonomy(db)
     seed_evidence_mapping(db)
+    refreshed_users = set(seed_demo_usage_evidence(db)) | set(users_with_placeholder_gaps(db))
+    for user_id in refreshed_users:
+        run_gap_analysis(db, user_id)
 finally:
     db.close()
 

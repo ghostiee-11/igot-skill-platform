@@ -4,10 +4,8 @@ import React from "react";
 import Link from "next/link";
 import {
   FlaskConical,
-  Sparkles,
-  Terminal,
   ArrowRight,
-  BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,15 +21,14 @@ export function LabLauncherBanner({
   description = "A Jupyter notebook backed by an isolated Python 3.11 sandbox, with automatic test grading.",
 }: LabLauncherBannerProps) {
   return (
-    <div className="hero-gradient relative overflow-hidden rounded-2xl p-6 text-white border border-slate-800/40 shadow-md space-y-4">
-      <div className="absolute inset-0 hero-mesh opacity-30 pointer-events-none" />
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-light text-teal-300 border border-white/20 text-[11px] font-bold uppercase tracking-wider">
-            <FlaskConical className="h-3.5 w-3.5 text-teal-300" /> Hands-on Jupyter Lab
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-2xl">
+          <div className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#0D9488]">
+            <FlaskConical className="h-4 w-4" /> Technical practice
           </div>
-          <h3 className="text-base font-bold text-white">{title}</h3>
-          <p className="text-xs text-white/80 max-w-xl leading-relaxed">
+          <h3 className="text-xl font-semibold text-slate-950">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
             {description}
           </p>
         </div>
@@ -39,25 +36,25 @@ export function LabLauncherBanner({
         <Link href={`/labs/${labId}`} target="_blank" rel="noopener noreferrer">
           <Button
             size="sm"
-            className="navy-teal-gradient text-white text-xs font-bold px-5 h-10 rounded-xl shadow-sm hover:opacity-95 transition-all cursor-pointer"
+            className="h-10 rounded-xl bg-[#1E3A8A] px-5 text-xs font-semibold text-white hover:bg-[#173274]"
           >
-            Launch Lab Workspace <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            Open lab <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Button>
         </Link>
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-xs border-t border-white/10 text-white/80">
+      <div className="grid grid-cols-1 gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600 sm:grid-cols-3">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-amber-300" />
-          <span>Jupyter Cell Runner</span>
+          <CheckCircle2 className="h-4 w-4 text-[#0D9488]" />
+          <span>Run code in cells</span>
         </div>
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-teal-300" />
-          <span>Automatic Test Grading</span>
+          <CheckCircle2 className="h-4 w-4 text-[#0D9488]" />
+          <span>Check your work</span>
         </div>
         <div className="flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-blue-300" />
-          <span>Docker Sandbox Console</span>
+          <CheckCircle2 className="h-4 w-4 text-[#0D9488]" />
+          <span>Submit when ready</span>
         </div>
       </div>
     </div>
