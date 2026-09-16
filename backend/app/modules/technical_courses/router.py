@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -19,7 +21,8 @@ from app.modules.technical_courses.schemas import (
     GeneratedLabSchema, TestCaseSchema, ValidationResultSchema, TestResultItem,
     ExecuteStudentCodeRequest, ExecuteStudentCodeResponse,
     ExecuteCellRequest, ExecuteCellResponse,
-    ExportNotebookRequest, ExportNotebookResponse
+    ExportNotebookRequest, ExportNotebookResponse,
+    LabAssistantRequest, LabAssistantResponse
 )
 from app.modules.technical_courses.services.transcript_service import TranscriptService
 from app.modules.technical_courses.services.objective_extractor import ObjectiveExtractor
@@ -32,6 +35,60 @@ from app.modules.technical_courses.services.pipeline_orchestrator import Technic
 
 
 router = APIRouter(prefix="/technical-courses", tags=["technical-courses"])
+logger = logging.getLogger("technical_courses.lab_assistant")
+
+
+def _lab_assistant_context(lab_id: int, db: Session) -> Dict[str, Any]:
+    lab = db.query(TechnicalGeneratedLab).filter(TechnicalGeneratedLab.id == lab_id).first()
+    if lab:
+        return {
+            "title": lab.title,
+            "objective": lab.objective,
+            "instructions": lab.instructions,
+            "constraints": json.loads(lab.constraints_json) if lab.constraints_json else [],
+            "starter_code": lab.starter_code,
+        }
+
+    if lab_id >= 1000:
+        from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
+
+        index = lab_id - 1001
+        if 0 <= index < len(BUILTIN_LAB_TEMPLATES):
+            template = BUILTIN_LAB_TEMPLATES[index]
+            return {
+                "title": template.title,
+                "objective": f"Master {template.skill} in practical public administration data workflows.",
+                "instructions": template.instructions_template.format(
+                    objective=f"Implement and validate {template.title}",
+                    function_name=template.tags[0] if template.tags else "process_solution",
+                ),
+                "constraints": template.constraints,
+                "starter_code": template.starter_code_template,
+            }
+    raise HTTPException(status_code=404, detail="Lab not found")
+
+
+def _safe_coaching_fallback(question: str, output: Optional[str]) -> str:
+    if output:
+        final_line = next((line.strip() for line in reversed(output.splitlines()) if line.strip()), "the latest output")
+        return (
+            f"Start with the last signal from your run: “{final_line[:180]}”. "
+            "Which assumption in your function does that line contradict? Check the function inputs and trace one small example by hand, "
+            "then rerun only the active cell. Tell me what value first differs from what you expected."
+        )
+    if re.search(r"\b(answer|solution|complete code|write it for me)\b", question, re.I):
+        return (
+            "I won’t provide the completed solution, but I can help you reach it. Identify the required input and output shapes first. "
+            "Then describe one transformation the function must perform before it can produce that output. Which transformation are you least sure about?"
+        )
+    return (
+        "Let’s narrow this down without jumping to the solution. What should the function return for the smallest valid input you can invent? "
+        "Write that example down, trace your current code against it, and tell me the first step where the actual state differs from your expectation."
+    )
+
+
+def _contains_direct_solution(text: str) -> bool:
+    return "```" in text or bool(re.search(r"(?m)^\s*(def |class |for .+:|while .+:|return\s+[{\[])" , text))
 
 
 # 1. Transcript Ingestion & Processing
@@ -321,7 +378,70 @@ def list_all_labs(
     return result
 
 
-# 12. Execute Student Submission
+# 12. Contextual lab coaching assistant
+@router.post("/labs/{lab_id}/assistant", response_model=LabAssistantResponse)
+def coach_lab_learner(
+    lab_id: int,
+    req: LabAssistantRequest,
+    db: Session = Depends(get_db),
+):
+    """Give contextual, Socratic help without exposing a completed lab solution."""
+    context = _lab_assistant_context(lab_id, db)
+    history = "\n".join(f"{item.role}: {item.content}" for item in req.history[-6:]) or "No earlier conversation."
+    prompt = f"""
+You are the iGOT Karmayogi Lab Guide, a patient technical coach inside an interactive Python lab.
+
+NON-NEGOTIABLE COACHING RULES:
+- Never provide completed code, a full function implementation, a final answer, hidden test assertions, or a reference solution.
+- Do not output fenced code blocks or copy-paste-ready code.
+- Do not claim the learner is correct without evidence from their run output.
+- Use a Socratic progression: diagnose the current obstacle, give one conceptual hint, and suggest one small next action.
+- If asked for the answer, refuse briefly and redirect to the next reasoning step.
+- Keep the response under 140 words. Ask at most one focused question.
+
+LAB TITLE: {context['title']}
+OBJECTIVE: {context['objective']}
+INSTRUCTIONS: {context['instructions']}
+REQUIREMENTS: {json.dumps(context['constraints'])}
+STARTER CODE (context only; never complete it):
+{context['starter_code']}
+
+LEARNER'S CURRENT NOTEBOOK CODE:
+{req.current_code or '(No code entered yet.)'}
+
+LATEST CELL OUTPUT:
+{req.active_output or '(No output yet.)'}
+
+RECENT CONVERSATION:
+{history}
+
+LEARNER QUESTION: {req.message}
+""".strip()
+
+    response = ""
+    source = "guided-fallback"
+    try:
+        from app.agents.recommendation.agent import get_llm_client
+
+        client = get_llm_client()
+        if client is not None:
+            response = str(client.invoke(prompt).content).strip()
+            source = "lab-guide-llm"
+    except Exception as exc:
+        logger.warning("Lab assistant LLM failed: %s", exc)
+
+    if not response or _contains_direct_solution(response):
+        response = _safe_coaching_fallback(req.message, req.active_output)
+        source = "guided-fallback"
+
+    return LabAssistantResponse(
+        response=response[:1600],
+        source=source,
+        suggestions=["Explain my latest error", "Give me a smaller hint", "What should I test next?"],
+    )
+
+
+# 13. Execute Student Submission
 @router.post("/labs/{lab_id}/execute", response_model=ExecuteStudentCodeResponse)
 def execute_student_submission(
     lab_id: int,
@@ -367,7 +487,7 @@ def execute_student_submission(
         raise HTTPException(status_code=500, detail=f"Lab execution failed: {str(e)}")
 
 
-# 13. Execute Arbitrary Notebook Cell in Sandbox
+# 14. Execute Arbitrary Notebook Cell in Sandbox
 @router.post("/sandbox/execute-code", response_model=ExecuteCellResponse)
 def execute_notebook_cell(req: ExecuteCellRequest):
     """
@@ -382,7 +502,7 @@ def execute_notebook_cell(req: ExecuteCellRequest):
         raise HTTPException(status_code=500, detail=f"Cell execution failed: {str(e)}")
 
 
-# 14. Export Notebook (Marimo Reactive App or Jupyter .ipynb)
+# 15. Export Notebook (Marimo Reactive App or Jupyter .ipynb)
 @router.post("/notebook/export", response_model=ExportNotebookResponse)
 def export_notebook(req: ExportNotebookRequest):
     """

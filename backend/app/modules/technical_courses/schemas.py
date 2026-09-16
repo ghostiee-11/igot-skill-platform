@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
 import datetime
 
@@ -275,4 +275,22 @@ class ExportNotebookResponse(BaseModel):
     content: str
     format: str
     mime_type: str
+
+
+class LabAssistantMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
+class LabAssistantRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    current_code: str = Field(default="", max_length=20000)
+    active_output: Optional[str] = Field(default=None, max_length=8000)
+    history: List[LabAssistantMessage] = Field(default_factory=list, max_length=8)
+
+
+class LabAssistantResponse(BaseModel):
+    response: str
+    source: str
+    suggestions: List[str] = Field(default_factory=list)
 

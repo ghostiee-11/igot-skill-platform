@@ -8,6 +8,8 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   Download,
   Loader2,
@@ -15,6 +17,7 @@ import {
   Plus,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   XCircle,
 } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -23,6 +26,7 @@ import { Markdown } from "@/components/shared/Markdown";
 import { fetchApi } from "@/lib/api";
 import type { CellExecutionResult, LabDetail, LabExecutionResult, NotebookCell } from "@/lib/types/labs";
 import { NotebookCellView } from "@/features/labs/components/NotebookCellView";
+import { LabAssistantPanel } from "@/features/labs/components/LabAssistantPanel";
 
 const PythonEditor = dynamic(() => import("@/features/labs/components/PythonEditor"), { ssr: false });
 
@@ -101,6 +105,8 @@ export default function LabWorkspacePage() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("instructions");
   const [confirmReset, setConfirmReset] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
+  const [instructionsCollapsed, setInstructionsCollapsed] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   const cellsRef = useRef<NotebookCell[]>([]);
   const counterRef = useRef(1);
@@ -290,6 +296,11 @@ export default function LabWorkspacePage() {
   const busy = runningAll || submitting || cells.some((c) => c.status === "running");
   const tests = lab.test_cases ?? [];
   const resultsByName = new Map((testResult?.test_results ?? []).map((r) => [r.name, r]));
+  const assistantCode = cells
+    .filter((cell) => cell.type === "code" && cell.id !== CHECK_CELL_ID)
+    .map((cell) => cell.content)
+    .join("\n\n");
+  const activeOutput = cells[activeIndex]?.output;
 
   return (
     <div className="flex flex-col bg-slate-50 lg:h-[calc(100vh-65px)]">
@@ -346,7 +357,16 @@ export default function LabWorkspacePage() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="flex min-h-0 flex-col border-b border-slate-200 bg-white lg:w-[24rem] lg:border-b-0 lg:border-r xl:w-[27rem]">
+        <div
+          className={`relative shrink-0 transition-[width] duration-200 ease-out ${
+            instructionsCollapsed ? "lg:w-0" : "lg:w-[24rem] xl:w-[27rem]"
+          }`}
+        >
+          <aside
+            className={`flex min-h-0 flex-col border-b border-slate-200 bg-white transition-opacity duration-150 lg:absolute lg:inset-0 lg:h-full lg:w-full lg:border-b-0 lg:border-r ${
+              instructionsCollapsed ? "lg:pointer-events-none lg:opacity-0" : "lg:opacity-100"
+            }`}
+          >
           <div role="tablist" aria-label="Lab panels" className="flex shrink-0 border-b border-slate-200 px-2">
             {(
               [
@@ -491,9 +511,19 @@ export default function LabWorkspacePage() {
               </div>
             )}
           </div>
-        </aside>
+          </aside>
+          <button
+            type="button"
+            onClick={() => setInstructionsCollapsed((collapsed) => !collapsed)}
+            aria-label={instructionsCollapsed ? "Show lab instructions" : "Hide lab instructions"}
+            aria-expanded={!instructionsCollapsed}
+            className="absolute right-0 top-3 z-30 hidden size-7 translate-x-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-[#1E3A8A]/40 hover:text-[#1E3A8A] lg:inline-flex"
+          >
+            {instructionsCollapsed ? <ChevronRight className="size-3.5" aria-hidden="true" /> : <ChevronLeft className="size-3.5" aria-hidden="true" />}
+          </button>
+        </div>
 
-        <main className="min-h-0 flex-1 overflow-y-auto" aria-label="Notebook">
+        <main className="relative min-h-0 flex-1 overflow-y-auto" aria-label="Notebook">
           <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200 bg-white/95 px-4 py-1.5 backdrop-blur">
             <Button variant="ghost" size="sm" onClick={() => addCell("code", activeIndex)}>
               <Plus className="size-3.5" aria-hidden="true" />
@@ -562,6 +592,29 @@ export default function LabWorkspacePage() {
             </div>
           </div>
         </main>
+
+        {assistantOpen && (
+          <LabAssistantPanel
+            labId={lab.id}
+            labTitle={lab.title}
+            currentCode={assistantCode}
+            activeOutput={activeOutput}
+            onClose={() => setAssistantOpen(false)}
+          />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setAssistantOpen((open) => !open)}
+          aria-label={assistantOpen ? "Close lab guide" : "Open lab guide"}
+          aria-expanded={assistantOpen}
+          aria-controls="lab-assistant-panel"
+          title={assistantOpen ? "Close lab guide" : "Open lab guide"}
+          className="fixed bottom-5 left-1/2 z-40 inline-flex size-11 -translate-x-1/2 items-center justify-center rounded-full bg-gradient-to-br from-[#1E3A8A] to-[#0D9488] text-white shadow-lg ring-4 ring-white/80 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 max-lg:data-[state=open]:hidden"
+          data-state={assistantOpen ? "open" : "closed"}
+        >
+          <Sparkles className="size-5" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
