@@ -112,15 +112,7 @@ export default function LiveInterviewPage() {
   const media = useInterviewMedia();
   const [draft, setDraft] = useState("");
   const voice = useBrowserVoice();
-  const browserDictation = useSpeechCapture(setDraft);
-  const speech = {
-    ...browserDictation,
-    busy: false,
-    finish: async () => {
-      browserDictation.stop();
-      return draft;
-    },
-  };
+  const speech = useSpeechCapture(setDraft);
 
   const [stage, setStage] = useState<Stage>("setup");
   const [courses, setCourses] = useState<BehaviouralCourse[]>([]);
@@ -173,12 +165,11 @@ export default function LiveInterviewPage() {
     if (thread) thread.scrollTop = thread.scrollHeight;
   }, [messages, submitting]);
 
-  const speak = async (text: string, force = false, beginListening = false) => {
+  const speak = async (text: string, force = false) => {
     // Stop dictation so the interviewer's voice is not transcribed as the answer.
     speech.stop();
-    const handoff = ++speechHandoffRef.current;
+    speechHandoffRef.current += 1;
     if (voiceOn || force) await voice.speak(text);
-    if (beginListening && handoff === speechHandoffRef.current && media.micOn) void speech.start(draft);
   };
 
   const conclude = async () => {
@@ -223,7 +214,7 @@ export default function LiveInterviewPage() {
       setElapsed(0);
       media.resetTurn();
       setStage("room");
-      void speak(res.initial_ai_question, false, true);
+      void speak(res.initial_ai_question);
     } catch (err) {
       media.stop();
       setError(errorMessage(err, "The interview could not be started."));
@@ -279,7 +270,7 @@ export default function LiveInterviewPage() {
         return [...next, { role: "board", text: res.ai_question }];
       });
       setPhaseName(res.phase_name);
-      void speak(res.ai_question, false, !res.is_final_turn);
+      void speak(res.ai_question);
       if (res.is_final_turn) await conclude();
     } catch (err) {
       setMessages((current) => current.slice(0, -1));
@@ -724,15 +715,17 @@ export default function LiveInterviewPage() {
                           type="button"
                           size="sm"
                           variant={speech.listening ? "danger" : "outline"}
-                          onClick={() => (speech.listening ? speech.stop() : speech.start(draft))}
-                          disabled={submitting || (live && !media.micOn)}
+                          onClick={() => (speech.listening ? speech.stop() : void speech.start(draft))}
+                          disabled={submitting || speech.starting || speech.busy || (live && !media.micOn)}
                         >
-                          {speech.listening ? (
+                          {speech.starting ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                          ) : speech.listening ? (
                             <MicOff className="size-3.5" aria-hidden="true" />
                           ) : (
                             <Mic className="size-3.5" aria-hidden="true" />
                           )}
-                          {speech.listening ? "Stop dictation" : "Dictate answer"}
+                          {speech.starting ? "Starting mic..." : speech.listening ? "Stop dictation" : "Dictate answer"}
                         </Button>
                       ) : (
                         <span className="text-xs text-slate-500">Dictation is not supported in this browser. Type your answer.</span>

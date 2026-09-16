@@ -2,9 +2,12 @@
 
 import os
 import shutil
+import sys
+import tempfile
 import unittest
 import asyncio
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -47,7 +50,7 @@ class TestCybersecuritySandbox(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.db = self.TestSession()
         seed_cybersec_challenges(self.db)
-        self.scratch_dir = Path("/tmp/test_cybersec_scratch")
+        self.scratch_dir = Path(tempfile.gettempdir()) / "test_cybersec_scratch"
         self.scratch_dir.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
@@ -252,6 +255,32 @@ class TestCybersecuritySandbox(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotEqual(sim_hint_res.content, "Session not found.")
         self.assertIn("4625", sim_hint_res.content)
+
+    async def test_09_marimo_launcher_uses_backend_interpreter_and_popen(self):
+        """Regression: Windows Uvicorn selector loops cannot create asyncio subprocesses."""
+        fake_process = MagicMock()
+        fake_process.poll.return_value = None
+        fake_process.stderr = None
+        fake_process.wait.return_value = 0
+
+        module = "app.modules.digital_governance.services.sandbox_manager"
+        with (
+            patch.object(sandbox_manager, "_find_available_port", return_value=8085),
+            patch.object(sandbox_manager, "_is_port_listening", return_value=True),
+            patch(f"{module}.subprocess.Popen", return_value=fake_process) as popen,
+            patch(
+                "asyncio.create_subprocess_exec",
+                side_effect=AssertionError("asyncio subprocess launcher must not be used"),
+            ),
+        ):
+            session = await sandbox_manager.start_session(
+                "01-soc-auth-investigation", duration_minutes=5, db=self.db
+            )
+            command = popen.call_args.args[0]
+            self.assertEqual(command[:3], [sys.executable, "-m", "marimo"])
+            self.assertEqual(session.status, "running")
+            self.assertEqual(session.assigned_port, 8085)
+            await sandbox_manager.stop_session(session.session_id, db=self.db)
 
 
 if __name__ == "__main__":

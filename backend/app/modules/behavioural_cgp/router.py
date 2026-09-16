@@ -1,6 +1,12 @@
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from uuid import uuid4
+from fastapi import APIRouter, HTTPException, status, Depends, Query, File, UploadFile
+import httpx
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import Course, User
@@ -36,6 +42,32 @@ from .services.interview_service import InterviewSessionManager
 from .services.result_store import save_behavioural_result
 
 router = APIRouter(prefix="/behavioural", tags=["behavioural_cgp"])
+logger = logging.getLogger("behavioural_cgp.stt")
+
+MAX_DICTATION_BYTES = 25 * 1024 * 1024
+SARVAM_STT_URL = "https://api.sarvam.ai/speech-to-text"
+DICTATION_RECORDINGS_DIR = Path(__file__).resolve().parents[3] / "recordings" / "dictation"
+DICTATION_RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _recording_suffix(filename: str, content_type: str) -> str:
+    suffix = Path(filename).suffix.lower()
+    if suffix in {".wav", ".webm", ".ogg", ".mp3", ".m4a", ".mp4", ".flac", ".aac"}:
+        return suffix
+    return {
+        "audio/wav": ".wav",
+        "audio/webm": ".webm",
+        "audio/ogg": ".ogg",
+        "audio/mpeg": ".mp3",
+    }.get(content_type, ".bin")
+
+
+def _sarvam_error_message(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+        return str(body.get("error", {}).get("message") or body.get("message") or response.text)
+    except ValueError:
+        return response.text or f"HTTP {response.status_code}"
 
 # --- Course Curriculum & Case Mappings Endpoints ---
 
@@ -214,6 +246,67 @@ def get_carryforward_session_summary(session_id: str, db: Session = Depends(get_
     return summary
 
 # --- AI Live Feed Interview Endpoints ---
+
+@router.post("/interview/transcribe")
+async def transcribe_interview_audio(audio: UploadFile = File(...)):
+    """Transcribe browser-recorded interview audio after microphone permission is granted."""
+    if not settings.SARVAM_API_KEY:
+        raise HTTPException(status_code=503, detail="Sarvam dictation transcription is not configured")
+
+    payload = await audio.read(MAX_DICTATION_BYTES + 1)
+    if not payload:
+        raise HTTPException(status_code=400, detail="No audio was recorded")
+    if len(payload) > MAX_DICTATION_BYTES:
+        raise HTTPException(status_code=413, detail="The recording is too large to transcribe")
+
+    filename = audio.filename or "dictation.webm"
+    # MediaRecorder may append a codecs parameter; Sarvam accepts the base MIME type only.
+    content_type = (audio.content_type or "audio/webm").split(";", 1)[0].lower()
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stored_name = f"{timestamp}_{uuid4().hex[:10]}{_recording_suffix(filename, content_type)}"
+    recording_path = DICTATION_RECORDINGS_DIR / stored_name
+    recording_path.write_bytes(payload)
+    local_recording = str(recording_path)
+    logger.warning("Dictation recording saved locally: %s", local_recording)
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(
+                SARVAM_STT_URL,
+                headers={"api-subscription-key": settings.SARVAM_API_KEY},
+                data={"model": "saaras:v4", "language_code": "en-IN"},
+                files={"file": (filename, payload, content_type)},
+            )
+            response.raise_for_status()
+            result = response.json()
+    except httpx.HTTPStatusError as exc:
+        provider_error = _sarvam_error_message(exc.response)
+        logger.warning(
+            "Sarvam STT rejected audio with status %s: %s",
+            exc.response.status_code,
+            provider_error[:500],
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Sarvam rejected {stored_name}: {provider_error}",
+        ) from exc
+    except (httpx.RequestError, ValueError) as exc:
+        logger.warning("Sarvam STT request failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Sarvam is temporarily unavailable. Recording saved as {stored_name}",
+        ) from exc
+
+    request_id = result.get("request_id")
+    logger.info("Sarvam STT responded request_id=%s", request_id or "unknown")
+    text = str(result.get("transcript") or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail=f"No speech was detected. Recording saved as {stored_name}")
+    return {
+        "text": text,
+        "provider": "sarvam",
+        "request_id": request_id,
+        "local_recording": local_recording,
+    }
 
 @router.post("/interview/start")
 def start_live_interview(

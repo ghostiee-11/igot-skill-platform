@@ -19,6 +19,7 @@ const HEAD_TURN_DEG = 15;
 const VOICE_LEVEL = 8;
 const PAUSE_MS = 2000;
 const NOSE_TIP = 1;
+const XNNPACK_INFO = "Created TensorFlow Lite XNNPACK delegate for CPU";
 
 export type MediaStatus = "idle" | "requesting" | "live" | "denied" | "unavailable" | "stopped";
 export type AnalyserStatus = "off" | "loading" | "ready" | "unavailable";
@@ -106,6 +107,20 @@ function headAngles(m: number[]) {
   return { yaw, pitch };
 }
 
+function installMediaPipeLogFilter() {
+  // MediaPipe captures console.error during initialization, so install the filter before importing the WASM module.
+  const originalError = console.error;
+  const filteredError = (...args: unknown[]) => {
+    const message = args.map((value) => String(value)).join(" ");
+    if (message.includes(XNNPACK_INFO)) return;
+    originalError(...args);
+  };
+  console.error = filteredError;
+  return () => {
+    if (console.error === filteredError) console.error = originalError;
+  };
+}
+
 /**
  * Owns the camera and microphone for the interview: requests them only when asked, measures
  * observable delivery signals locally, and guarantees the devices are released when the interview
@@ -126,6 +141,7 @@ export function useInterviewMedia() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
+  const restoreConsoleErrorRef = useRef<(() => void) | null>(null);
   const loopRef = useRef<number | null>(null);
   // Bumped on every start and stop so a permission prompt or model load that resolves late knows it is stale.
   const generationRef = useRef(0);
@@ -150,6 +166,8 @@ export function useInterviewMedia() {
     audioCtxRef.current = null;
     landmarkerRef.current?.close();
     landmarkerRef.current = null;
+    restoreConsoleErrorRef.current?.();
+    restoreConsoleErrorRef.current = null;
     setStatus((current) => (current === "idle" ? current : "stopped"));
     setAnalyser("off");
     setFaceVisible(null);
@@ -224,7 +242,14 @@ export function useInterviewMedia() {
         setFaceVisible(Boolean(face));
         setFacingCamera(facing);
       } catch (err) {
-        console.warn("Face analysis frame failed:", err);
+        landmarkerRef.current?.close();
+        landmarkerRef.current = null;
+        restoreConsoleErrorRef.current?.();
+        restoreConsoleErrorRef.current = null;
+        setAnalyser("unavailable");
+        setFaceVisible(null);
+        setFacingCamera(null);
+        console.warn("Face analysis disabled after an inference failure:", err instanceof Error ? err.message : String(err));
       }
     }
 
@@ -236,6 +261,8 @@ export function useInterviewMedia() {
 
   const loadLandmarker = useCallback(async (generation: number) => {
     setAnalyser("loading");
+    restoreConsoleErrorRef.current?.();
+    restoreConsoleErrorRef.current = installMediaPipeLogFilter();
     try {
       const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
       const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
@@ -254,6 +281,8 @@ export function useInterviewMedia() {
       landmarkerRef.current = landmarker;
       setAnalyser("ready");
     } catch (err) {
+      restoreConsoleErrorRef.current?.();
+      restoreConsoleErrorRef.current = null;
       console.warn("Face analysis could not load:", err);
       if (generation === generationRef.current) setAnalyser("unavailable");
     }

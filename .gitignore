@@ -32,6 +32,10 @@ dist/
 *.sqlite3
 backend/karmayogi.db
 backend/backend-server*.log
+backend/backend-dev*.log
+backend/recordings/
+frontend/next-dev*.log
+frontend/npm-install*.log
 python-3.13.1-amd64.exe
 
 # Scraped content cache (lives in Supabase, not git)

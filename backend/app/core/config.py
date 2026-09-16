@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     NIM_API_KEY: str = os.getenv("NIM_API_KEY", "")
     NIM_MODEL: str = os.getenv("NIM_MODEL", "meta/llama-3.1-8b-instruct")
+    SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
 
     # Pinecone vector DB for the recommendation engine's semantic search
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")

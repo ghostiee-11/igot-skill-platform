@@ -16,6 +16,7 @@ import logging
 import asyncio
 import datetime
 import tempfile
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
@@ -57,7 +58,7 @@ class ActiveSession:
         assigned_port: int,
         scratch_dir: Path,
         duration_minutes: int = 45,
-        process: Optional[asyncio.subprocess.Process] = None,
+        process: Optional[subprocess.Popen] = None,
     ):
         self.session_id = session_id
         self.challenge_id = challenge_id
@@ -112,6 +113,12 @@ class SandboxManager:
                 if s.connect_ex(("127.0.0.1", port)) != 0:
                     return port
         return 8088
+
+    @staticmethod
+    def _is_port_listening(port: int) -> bool:
+        """Return whether a local service has bound the assigned sandbox port."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            return sock.connect_ex(("127.0.0.1", port)) == 0
 
     def list_challenges(self, db: Optional[Session] = None) -> List[SandboxChallengeSummary]:
         """Returns catalog of challenges directly from the SQLAlchemy database."""
@@ -328,47 +335,25 @@ def __(mo):
         (scratch_dir / ".marimo.toml").write_text(marimo_config_content)
 
         # 5. Spawn isolated Marimo run process (app mode: code hidden, analysis console visible)
-        python_bin = sys.executable
-        is_win = sys.platform == "win32"
-        bin_dir, exe = ("Scripts", "marimo.exe") if is_win else ("bin", "marimo")
-        candidates = [
-            REPO_ROOT / "backend" / ".venv" / bin_dir / exe,
-            REPO_ROOT / ".venv" / bin_dir / exe,
+        # Always launch Marimo with the backend interpreter. This guarantees that
+        # the child uses the same project-local venv on every platform and avoids
+        # accidentally selecting a stale global or .venv executable.
+        cmd = [
+            sys.executable,
+            "-m",
+            "marimo",
+            "run",
+            str(marimo_script.resolve()),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(assigned_port),
+            "--no-token",
+            "--headless",
+            "--no-skew-protection",
+            "--allow-origins",
+            "*",
         ]
-        marimo_bin = next((str(c) for c in candidates if c.exists()), None) or shutil.which("marimo") or ""
-
-        if marimo_bin and os.path.exists(marimo_bin):
-            cmd = [
-                marimo_bin,
-                "run",
-                str(marimo_script.resolve()),
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(assigned_port),
-                "--no-token",
-                "--headless",
-                "--no-skew-protection",
-                "--allow-origins",
-                "*",
-            ]
-        else:
-            cmd = [
-                python_bin,
-                "-m",
-                "marimo",
-                "run",
-                str(marimo_script.resolve()),
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(assigned_port),
-                "--no-token",
-                "--headless",
-                "--no-skew-protection",
-                "--allow-origins",
-                "*",
-            ]
 
         env = dict(os.environ)
         env["PYTHONUNBUFFERED"] = "1"
@@ -384,33 +369,52 @@ def __(mo):
         bound = False
         launch_error = ""
         try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
+            popen_kwargs: Dict[str, Any] = {}
+            if sys.platform == "win32":
+                popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+            # Uvicorn's Windows reload loop may use a SelectorEventLoop, whose
+            # asyncio subprocess transport raises NotImplementedError. Popen is
+            # portable here; creation runs in a worker so the API loop stays free.
+            proc = await asyncio.to_thread(
+                subprocess.Popen,
+                cmd,
                 cwd=str(scratch_dir),
                 env=env,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                **popen_kwargs,
             )
             # A cold Marimo start can take several seconds, so wait up to 15 seconds for the port.
             for _ in range(150):
-                if proc.returncode is not None:
+                if proc.poll() is not None:
                     break
                 await asyncio.sleep(0.1)
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    if s.connect_ex(("127.0.0.1", assigned_port)) == 0:
-                        bound = True
-                        break
+                if self._is_port_listening(assigned_port):
+                    bound = True
+                    break
         except Exception as e:
-            logger.warning(f"Could not spawn marimo process: {e}")
+            launch_error = f"{type(e).__name__}: {e}"
+            logger.exception("Could not spawn Marimo process")
 
         if not bound:
-            if proc is not None and proc.stderr is not None:
-                launch_error = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
-                if launch_error:
-                    logger.warning("Marimo launch failed: %s", launch_error[-1000:])
-            # Returning a URL nothing listens on leaves the learner staring at a dead console.
-            if proc is not None and proc.returncode is None:
-                proc.terminate()
+            if proc is not None:
+                if proc.poll() is None:
+                    proc.terminate()
+                    try:
+                        await asyncio.to_thread(proc.wait, 2.0)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        await asyncio.to_thread(proc.wait)
+                if proc.stderr is not None:
+                    stderr = proc.stderr.read().strip()
+                    if stderr:
+                        launch_error = stderr
+                        logger.warning("Marimo launch failed: %s", stderr[-1000:])
+                    proc.stderr.close()
             shutil.rmtree(scratch_dir, ignore_errors=True)
             raise RuntimeError(
                 "The Marimo analyst console could not start on the server. "
@@ -592,16 +596,17 @@ def __(mo):
             return False
         if session.process:
             try:
-                session.process.terminate()
-                try:
-                    await asyncio.wait_for(session.process.wait(), timeout=2.0)
-                except Exception:
+                if session.process.poll() is None:
+                    session.process.terminate()
                     try:
+                        await asyncio.to_thread(session.process.wait, 2.0)
+                    except subprocess.TimeoutExpired:
                         session.process.kill()
-                    except Exception:
-                        pass
+                        await asyncio.to_thread(session.process.wait)
+                if session.process.stderr is not None:
+                    session.process.stderr.close()
             except Exception:
-                pass
+                logger.exception("Could not stop Marimo process for session %s", session_id)
         if session.log_file:
             try:
                 session.log_file.close()
