@@ -1,5 +1,13 @@
 # 📜 Repository Changelog
 
+## 2026-09-18 — Obsolete repository material removed
+
+- Removed the superseded root `ai-service/` placeholder; the active implementation is `services/ai/`.
+- Removed the empty local `Plan/` directory and obsolete `docs/superpowers/` implementation drafts.
+- Removed regenerable dependency, virtual-environment, build and test-cache directories from the workspace.
+- Preserved `restructure/` as requested.
+- Preserved `backend/`, `content-pipeline/` and `supabase/` because they still serve as migration/parity references for specialist behavior not yet fully implemented in the new services. Remove them only after the remaining compatibility catalogue is closed.
+
 ## 2026-09-17 — Service architecture migration started
 
 - Architecture/migration: baseline `final-final` (`7123bd3`) fast-forwarded into `main` and pushed. Implementation is on `rebuild/service-architecture`, pending user review before merge.

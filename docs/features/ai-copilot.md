@@ -1,9 +1,9 @@
 # 🤖 AI Copilot (Karmayogi AI Assistant)
 
-> **Status:** `Implemented` (Phase 0)  
-> **Primary Modules:** `backend/app/agents/`, `frontend/src/components/shared/AiAssistantWidget.tsx`  
-> **Backend Endpoint:** `POST /api/agents/chat`  
-> **Architectural Boundary:** In-process assistant within LMS backend; future extraction reserved in `ai-service/`  
+> **Status:** `Migrating to service architecture`
+> **Primary Modules:** `services/ai/`, `apps/frontend/src/features/assistant/`
+> **Backend Endpoint:** `POST /api/agents/chat`
+> **Architectural Boundary:** Stateless AI service behind the public gateway
 
 ---
 
@@ -41,7 +41,7 @@ The **Karmayogi AI Assistant** provides an intelligent, context-aware conversati
 ```
 
 ### Deterministic MoSPI Domain Fallback Engine
-When neither `GOOGLE_API_KEY` nor `OPENAI_API_KEY` is present in the runtime environment, the assistant gracefully falls back to a deterministic MoSPI statistical knowledge engine (`backend/app/agents/router.py`). It reliably answers queries concerning:
+When no configured provider is available, the AI service returns a deterministic tutoring fallback instead of failing the learner journey. The broader legacy domain fallback remains in `backend/app/agents/router.py` only as a migration reference until its knowledge coverage is ported.
 1. **Consumer Price Index (CPI) & Inflation:** Modified Laspeyres formula, 2012=100 base year, geometric mean elementary quotes, item basket weighting.
 2. **NSS Survey Methodologies:** Multi-stage stratified sampling, First Stage Units (FSUs), hamlet-group formation, enterprise surveys.
 3. **PFMS & Governance:** Treasury Single Account (TSA) mechanics, Just-in-Time funding, Aadhaar Payment Bridge.
@@ -52,14 +52,14 @@ When neither `GOOGLE_API_KEY` nor `OPENAI_API_KEY` is present in the runtime env
 
 ## 4. Technical Specifications
 
-### 4.1 Frontend Component (`frontend/src/components/shared/AiAssistantWidget.tsx`)
+### 4.1 Frontend Component (`apps/frontend/src/features/assistant/components/AiAssistantWidget.tsx`)
 - **Trigger:** Circular button (`h-14 w-14 rounded-full bg-[#965C66] hover:bg-[#824E57] text-white shadow-lg border border-white/20`) with online status badge.
 - **Drawer / Dialog:** Expandable clean chat modal styled in the Muted Rose standard (`#965C66` header, `#EEE8E9` background).
 - **Communication:** Sends JSON `{ message: string, history?: [...] }` to `/api/agents/chat`.
 - **Response Handling:** Renders structured markdown, message timestamps, and provider attribution (subtly displayed).
 
-### 4.2 Backend Implementation (`backend/app/agents/router.py`)
-- **Framework:** LangGraph + LangChain Core (`StateGraph` workflow compilation).
+### 4.2 Service Implementation (`services/ai/src/igot_ai/`)
+- **Framework:** FastAPI with ordered provider adapters and deterministic fallback behavior.
 - **Endpoint:** `POST /api/agents/chat` (also aliased under `/agents/chat`).
 - **Input Schema (`ChatRequest`):**
   - `message: str` — Current user query.
@@ -76,11 +76,11 @@ When neither `GOOGLE_API_KEY` nor `OPENAI_API_KEY` is present in the runtime env
 
 > [!CAUTION]
 > **Zero External Dependency Lock:**
-> The assistant must NEVER fail or return an unhandled 500 error if external model provider API keys are missing or invalid. Any change to `backend/app/agents/router.py` must maintain the deterministic MoSPI fallback engine.
+> The assistant must never return an unhandled 500 merely because provider keys are missing or invalid. Failures must fall through to the next configured adapter or the deterministic response.
 
 > [!IMPORTANT]
 > **Architectural Boundary (ADR 0001 & ADR 0002):**
-> The assistant is an in-process component of the FastAPI backend in Phase 0. Do NOT create duplicate data stores or expose provider keys directly to the browser. The `ai-service/` directory is reserved for future extraction.
+> The AI service is stateless and does not own learner, course or competency records. Do not expose provider keys to the browser or give this service direct access to domain schemas.
 
 > [!TIP]
 > **UI Aesthetic Consistency:**

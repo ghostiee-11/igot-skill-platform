@@ -7,6 +7,6 @@
 /contracts/ @karmayogi-platform-maintainers
 /infra/ @karmayogi-platform-maintainers
 /backend/ @karmayogi-backend-team
-/ai-service/ @karmayogi-ai-team
+/services/ai/ @karmayogi-ai-team
 /docs/ @karmayogi-platform-maintainers
 /docker-compose*.yml @karmayogi-platform-maintainers
