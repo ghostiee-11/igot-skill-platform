@@ -57,15 +57,9 @@ docker compose -f infra/compose/docker-compose.yml ps
 docker compose -f infra/compose/docker-compose.yml logs --tail 200 gateway identity learning assessment competency ai content
 ```
 
-## Enable local labs
+## Local labs
 
-Labs are an opt-in Compose profile because the controller mounts the local Docker socket. Build the allowlisted runtime images first:
-
-```powershell
-docker build -t igot/lab-workspace:local environments/labs/workspace
-docker build -t igot/target-demo:local environments/labs/targets/demo
-docker compose -f infra/compose/docker-compose.yml --profile labs up -d --build labs
-```
+The standard Compose command builds the two allowlisted runtime images and starts the labs controller with the rest of the platform. The controller mounts the local Docker socket, so this all-in-one topology is for local development only.
 
 Verify both the labs database and Docker runtime:
 
@@ -115,7 +109,7 @@ Read `migrations/legacy/README.md` before apply mode. Apply only to a disposable
 Stop the standard stack while preserving PostgreSQL and RabbitMQ volumes:
 
 ```powershell
-docker compose -f infra/compose/docker-compose.yml --profile labs down
+docker compose -f infra/compose/docker-compose.yml down
 ```
 
 To erase local databases and broker state, add `--volumes`. That operation is destructive and is not required for ordinary restarts.

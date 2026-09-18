@@ -64,6 +64,11 @@ services:
       DEMO_LEARNER_NAME: ${DEMO_LEARNER_NAME:-Rajesh Kumar}
     ports: ["8101:8101"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_identity.main:app --host 0.0.0.0 --port 8101"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8101/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   learning:
     <<: *service-defaults
@@ -74,6 +79,11 @@ services:
       DATABASE_SCHEMA: learning
     ports: ["8102:8102"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_learning.main:app --host 0.0.0.0 --port 8102"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   assessment:
     <<: *service-defaults
@@ -86,6 +96,11 @@ services:
       COMPETENCY_URL: http://competency:8104
     ports: ["8103:8103"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_assessment.main:app --host 0.0.0.0 --port 8103"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8103/v1/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   competency:
     <<: *service-defaults
@@ -97,6 +112,11 @@ services:
       LEARNING_SERVICE_URL: http://learning:8102
     ports: ["8104:8104"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_competency.main:app --host 0.0.0.0 --port 8104"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8104/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   ai:
     <<: *service-defaults
@@ -109,6 +129,11 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports: ["8105:8105"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8105/v1/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   content:
     <<: *service-defaults
@@ -122,10 +147,28 @@ services:
       - ../storage/artifacts:/var/lib/igot/artifacts
     ports: ["8106:8106"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_content.main:app --host 0.0.0.0 --port 8106"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8106/v1/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  lab-workspace-image:
+    image: igot/lab-workspace:local
+    build: ../../environments/labs/workspace
+    command: ["python", "-c", "pass"]
+    restart: "no"
+    networks: [platform]
+
+  lab-target-demo-image:
+    image: igot/target-demo:local
+    build: ../../environments/labs/targets/demo
+    command: ["python", "-c", "pass"]
+    restart: "no"
+    networks: [platform]
 
   labs:
     <<: *service-defaults
-    profiles: ["labs"]
     container_name: igot-labs-controller
     build: ../../services/labs
     environment:
@@ -140,6 +183,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports: ["8107:8107"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_labs.main:app --host 0.0.0.0 --port 8107"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      lab-workspace-image:
+        condition: service_completed_successfully
+      lab-target-demo-image:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8107/v1/ready', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
 
   gateway:
     restart: unless-stopped
@@ -154,14 +211,20 @@ services:
       GATEWAY_LABS_URL: http://labs:8107
       GATEWAY_CORS_ORIGINS: http://localhost:3000
     depends_on:
-      - identity
-      - learning
-      - assessment
-      - competency
-      - ai
-      - content
+      identity: {condition: service_healthy}
+      learning: {condition: service_healthy}
+      assessment: {condition: service_healthy}
+      competency: {condition: service_healthy}
+      ai: {condition: service_healthy}
+      content: {condition: service_healthy}
+      labs: {condition: service_healthy}
     ports: ["8000:8000"]
     networks: [platform]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   frontend:
     restart: unless-stopped
@@ -171,9 +234,16 @@ services:
         NEXT_PUBLIC_API_URL: http://localhost:8000/api
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000/api
-    depends_on: [gateway]
+    depends_on:
+      gateway:
+        condition: service_healthy
     ports: ["3000:3000"]
     networks: [platform]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 networks:
   platform:

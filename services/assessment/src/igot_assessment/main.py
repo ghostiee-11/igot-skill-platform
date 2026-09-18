@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 from datetime import datetime,timezone
 from uuid import uuid4
 import httpx
-from fastapi import Depends,FastAPI,Header,HTTPException
+from fastapi import Depends,FastAPI,Header,HTTPException,Query
 from pydantic import BaseModel
 from sqlalchemy import func,select,text
 from sqlalchemy.orm import Session
 from .config import get_settings
+from .behavioural import CASES,DOCUMENTS,all_cases,find_case,find_document
 from .database import Assessment,Attempt,CyberSandboxChallenge,GeneratedQuiz,OutboxEvent,Question,QuizAttempt,SessionRecord,TechnicalLabTemplate,get_db,initialize_database,engine
 from .engines import REGISTRY,public_state
+from .interview import PHASES,build_report,start_state,submit_turn
 from .schemas import AssessmentCreate,CalculationRequest,ChartRequest,SessionAnswer,SessionStart,SubmitAssessmentRequest
 from .security import Principal,current_principal,require_admin
 from .statistical import StatisticalInputError,calculate,chart_spec
@@ -19,6 +21,46 @@ app=FastAPI(title="iGOT Assessment Service",version="1.0",lifespan=lifespan)
 
 class QuizSubmission(BaseModel):
     answers: dict[int,int]
+
+class BehaviouralSessionStart(BaseModel):
+    case_id:str|None=None
+
+class BehaviouralAnswer(BaseModel):
+    question_id:str
+    selected_option_id:str
+
+class BehaviouralCaseGeneration(BaseModel):
+    raw_text:str
+    document_title:str
+    document_type:str="Government Notice"
+    issuing_authority:str="Department of Personnel & Training (DoPT)"
+    statutory_reference:str="CCS (Conduct) Rules / GFR 2017"
+
+class InterviewStart(BaseModel):
+    course_id:int
+    officer_name:str="Officer"
+    target_duration_minutes:int=30
+
+class InterviewTurn(BaseModel):
+    session_id:str
+    officer_response:str
+    elapsed_seconds:int=0
+    speaking_pace_wpm:float|None=None
+    eye_contact_percent:float|None=None
+    composure_score:float|None=None
+    voice_clarity_score:float|None=None
+    posture_stability_score:float|None=None
+    head_movement_rate:float|None=None
+    fidgeting_index:float|None=None
+    filler_words_count:int|None=None
+    pauses_count:int|None=None
+    coherence_score:float|None=None
+    face_presence_percent:float|None=None
+    speaking_seconds:float|None=None
+    input_mode:str|None=None
+
+class InterviewEnd(BaseModel):
+    session_id:str
 
 def _quiz_or_404(db:Session,quiz_id:int)->GeneratedQuiz:
     quiz=db.get(GeneratedQuiz,quiz_id)
@@ -98,6 +140,124 @@ def technical_templates(_:Principal=Depends(current_principal),db:Session=Depend
 @app.get("/v1/digital-governance/sandbox/challenges")
 def cyber_challenges(db:Session=Depends(get_db)):
     return [{"id":item.id,"title":item.title,"category":item.category,"difficulty":item.difficulty,"points":item.points,"duration_minutes":item.duration_minutes,"is_flagship":item.is_flagship,"solved":False,"competency_id":item.competency_id,"tags":item.tags,"mitre_techniques":item.mitre_techniques,"objectives":item.objectives} for item in db.scalars(select(CyberSandboxChallenge).order_by(CyberSandboxChallenge.title)).all()]
+
+@app.get("/v1/behavioural/courses")
+async def behavioural_courses(behavioural_only:bool=False):
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response=await client.get(f"{get_settings().learning_url}/v1/discover/courses",params={"limit":200})
+            response.raise_for_status();courses=response.json().get("courses",[])
+    except (httpx.HTTPError,ValueError) as exc:
+        raise HTTPException(503,"Learning catalogue unavailable") from exc
+    if behavioural_only: courses=[course for course in courses if "behavio" in course.get("category","").lower()]
+    return [{"course_id":course["id"],"title":course["title"],"organization":course.get("organization","") ,"category":course.get("category","") ,"overview":course.get("overview","") ,"mapped_notices":[doc["title"] for doc in DOCUMENTS if course["id"]==1],"case_count":len(all_cases(course["id"]))} for course in courses]
+
+@app.get("/v1/behavioural/corpus")
+def behavioural_corpus(): return DOCUMENTS
+
+@app.get("/v1/behavioural/corpus/{document_id}")
+def behavioural_document(document_id:str):
+    document=find_document(document_id)
+    if not document:raise HTTPException(404,"Government document not found")
+    return document
+
+@app.get("/v1/behavioural/cases")
+def behavioural_cases(course_id:int|None=Query(None)): return all_cases(course_id)
+
+@app.post("/v1/behavioural/cases/generate",status_code=201)
+def generate_behavioural_case(req:BehaviouralCaseGeneration):
+    if len(req.raw_text.strip())<50:raise HTTPException(400,"Document text must contain at least 50 characters")
+    case=find_case("case_ccs_rule14_inquiry");case["id"]=f"case-{uuid4()}";case["title"]=req.document_title;case["document_id"]=f"document-{uuid4()}";case["document_title"]=req.document_title;case["document_type"]=req.document_type;case["statutory_citations"]=[req.statutory_reference]
+    for question in case["questions"].values():question["case_id"]=case["id"]
+    CASES.append(case);return case
+
+@app.get("/v1/behavioural/cases/{case_id}")
+def behavioural_case(case_id:str):
+    case=find_case(case_id)
+    if not case:raise HTTPException(404,"Case scenario not found")
+    return case
+
+@app.get("/v1/behavioural/courses/{course_id}/cases")
+def behavioural_course_cases(course_id:int): return all_cases(course_id)
+
+@app.post("/v1/behavioural/courses/{course_id}/generate-case",status_code=201)
+async def generate_course_case(course_id:int):
+    case=find_case("case_ccs_rule14_inquiry")
+    if not case:raise HTTPException(404,"No behavioural case template available")
+    metadata=await course_metadata(str(course_id));case["id"]=f"course-{course_id}-{uuid4()}";case["course_id"]=course_id;case["course_title"]=metadata.get("title",f"Course {course_id}");case["course_organization"]=metadata.get("organization","")
+    for question in case["questions"].values():question["case_id"]=case["id"]
+    CASES.append(case);return case
+
+@app.post("/v1/behavioural/session/start",status_code=201)
+def start_behavioural_session(req:BehaviouralSessionStart,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    case=find_case(req.case_id) if req.case_id else (all_cases()[0] if all_cases() else None)
+    if not case:raise HTTPException(404,"Case scenario not found")
+    question=case["questions"][case["root_question_id"]];state={"case_id":case["id"],"question_id":question["id"],"trail":[],"completed":False}
+    record=SessionRecord(user_id=principal.user_id,engine="behavioural_carryforward",state=state);db.add(record);db.commit()
+    return {"session_id":record.id,"case_id":case["id"],"case_title":case["title"],"document_title":case["document_title"],"document_type":case["document_type"],"initial_context":case["initial_context"],"current_question":question}
+
+def _behavioural_record(session_id:str,principal:Principal,db:Session)->tuple[SessionRecord,dict]:
+    record=db.get(SessionRecord,session_id)
+    if not record or record.user_id!=principal.user_id or record.engine!="behavioural_carryforward":raise HTTPException(404,"Session not found")
+    case=find_case(record.state["case_id"])
+    if not case:raise HTTPException(409,"Session case is unavailable")
+    return record,case
+
+@app.get("/v1/behavioural/session/{session_id}/current")
+def current_behavioural_question(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record,case=_behavioural_record(session_id,principal,db);question=case["questions"].get(record.state.get("question_id"))
+    return {"session_id":record.id,"case_id":case["id"],"case_title":case["title"],"session_completed":record.state.get("completed",False),"total_steps":len(record.state.get("trail",[])),"optimal_steps":sum(item["is_optimal"] for item in record.state.get("trail",[])),"current_question":question}
+
+@app.post("/v1/behavioural/session/{session_id}/submit")
+def submit_behavioural_answer(session_id:str,req:BehaviouralAnswer,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record,case=_behavioural_record(session_id,principal,db);state=dict(record.state)
+    if state.get("completed"):raise HTTPException(409,"Session is complete")
+    question=case["questions"].get(state.get("question_id"))
+    if not question or question["id"]!=req.question_id:raise HTTPException(409,"Question is not current")
+    option=next((item for item in question["options"] if item["option_id"]==req.selected_option_id),None)
+    if not option:raise HTTPException(422,"Unknown option")
+    trail=[*state.get("trail",[]),{"question_id":question["id"],"stage_type":question["stage_type"],"question_prompt":question["prompt"],"selected_option_id":option["option_id"],"selected_option_text":option["text"],"is_optimal":option["is_optimal"],"is_satisfactory_terminal":option["is_satisfactory_terminal"],"consequence_summary":option["consequence_summary"],"statutory_rationale":option["statutory_rationale"]}];next_id=option.get("next_question_id");completed=not next_id;state.update(trail=trail,question_id=next_id,completed=completed);record.state=state;record.status="completed" if completed else "active";db.commit();score=round(sum(item["is_optimal"] for item in trail)*100/len(trail),1)
+    return {"is_optimal":option["is_optimal"],"is_satisfactory_terminal":option["is_satisfactory_terminal"],"consequence_summary":option["consequence_summary"],"statutory_rationale":option["statutory_rationale"],"carryforward_active":bool(next_id),"scenario_completed":completed,"session_completed":completed,"current_score":score,"total_steps_taken":len(trail),"next_question":case["questions"].get(next_id),"next_case_id":None}
+
+@app.get("/v1/behavioural/session/{session_id}/summary")
+def behavioural_summary(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record,case=_behavioural_record(session_id,principal,db);trail=record.state.get("trail",[]);score=round(sum(item["is_optimal"] for item in trail)*100/max(len(trail),1),1)
+    return {"session_id":record.id,"case_id":case["id"],"case_title":case["title"],"document_title":case["document_title"],"document_type":case["document_type"],"total_steps":len(trail),"optimal_steps":sum(item["is_optimal"] for item in trail),"procedural_compliance_score":score,"resolved_satisfactorily":bool(trail and trail[-1]["is_satisfactory_terminal"]),"decision_trail":trail,"competency_scores":{"procedural fairness":score},"competency_results":[],"strengths":["Procedural reasoning"] if score>=70 else [],"weaknesses":[] if score>=70 else ["Review mandatory safeguards"],"recommended_upskilling":[],"key_takeaways":case["learning_objectives"]}
+
+def _interview_record(session_id:str,principal:Principal,db:Session)->SessionRecord:
+    record=db.get(SessionRecord,session_id)
+    if not record or record.user_id!=principal.user_id or record.engine!="behavioural_interview":raise HTTPException(404,"Interview session not found")
+    return record
+
+@app.post("/v1/behavioural/interview/start",status_code=201)
+async def start_interview(req:InterviewStart,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    if req.target_duration_minutes<25 or req.target_duration_minutes>35:raise HTTPException(422,"Interview duration must be between 25 and 35 minutes")
+    metadata=await course_metadata(req.course_id);title=str(metadata.get("title") or f"Course {req.course_id}")
+    state=start_state(req.course_id,title,req.officer_name.strip() or principal.full_name or "Officer",req.target_duration_minutes)
+    record=SessionRecord(user_id=principal.user_id,engine="behavioural_interview",state=state);db.add(record);db.commit()
+    return {"session_id":record.id,"course_id":req.course_id,"course_title":title,"officer_name":state["officer_name"],"target_duration_minutes":req.target_duration_minutes,"initial_ai_question":state["transcript"][0]["content"],"current_phase":PHASES[0][0],"primary_competency":PHASES[0][1]}
+
+@app.post("/v1/behavioural/interview/turn")
+def interview_turn(req:InterviewTurn,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record=_interview_record(req.session_id,principal,db)
+    if record.status!="active":raise HTTPException(409,"Interview session is already complete")
+    metrics=req.model_dump(exclude={"session_id","officer_response","elapsed_seconds"})
+    try:state,response=submit_turn(dict(record.state),req.officer_response,req.elapsed_seconds,metrics)
+    except ValueError as exc:raise HTTPException(409,str(exc))
+    record.state=state;db.commit();return response
+
+def _finish_interview(session_id:str,principal:Principal,db:Session)->dict:
+    record=_interview_record(session_id,principal,db);state=dict(record.state)
+    if state.get("final_report"):return state["final_report"]
+    report=build_report(record.id,state);state["final_report"]=report;record.state=state;record.status="completed";db.commit();return report
+
+@app.post("/v1/behavioural/interview/end")
+def end_interview_by_body(req:InterviewEnd,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return _finish_interview(req.session_id,principal,db)
+
+@app.post("/v1/behavioural/interview/{session_id}/end")
+def end_interview(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return _finish_interview(session_id,principal,db)
 @app.post("/v1/assessments",status_code=201)
 def create_assessment(req:AssessmentCreate,_:Principal=Depends(require_admin),db:Session=Depends(get_db)):
     obj=Assessment(id=req.id,course_id=req.course_id,title=req.title,description=req.description,engine=req.engine,time_limit_minutes=req.time_limit_minutes,pass_threshold_percent=req.pass_threshold_percent); obj.questions=[Question(**q.model_dump()) for q in req.questions]; db.add(obj); db.commit(); db.refresh(obj); return {"id":obj.id}

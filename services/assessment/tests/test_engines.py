@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from igot_assessment import main
-from igot_assessment.database import Base, GeneratedQuiz, GeneratedQuizQuestion, OutboxEvent, get_db
+from igot_assessment.database import Base, GeneratedQuiz, GeneratedQuizQuestion, OutboxEvent, SessionRecord, get_db
 from igot_assessment.engines import REGISTRY, public_state
 from igot_assessment.security import Principal, current_principal, require_admin
 
@@ -154,6 +154,63 @@ def test_migrated_quiz_catalogue_delivery_and_submission(monkeypatch):
         assert result.json()["score_percent"] == 100.0
         assert client.get("/v1/quiz/12/attempts").json()[0]["correct_count"] == 1
         assert client.delete("/v1/quiz/12").status_code == 403
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_behavioural_case_catalogue_and_session(monkeypatch):
+    client, session = _client(monkeypatch)
+    try:
+        cases = client.get("/v1/behavioural/cases")
+        corpus = client.get("/v1/behavioural/corpus")
+        assert cases.status_code == 200 and len(cases.json()) >= 1
+        assert corpus.status_code == 200 and len(corpus.json()) >= 1
+        case = cases.json()[0]
+
+        started = client.post("/v1/behavioural/session/start", json={"case_id": case["id"]})
+        assert started.status_code == 201
+        session_id = started.json()["session_id"]
+        question = started.json()["current_question"]
+        submitted = client.post(
+            f"/v1/behavioural/session/{session_id}/submit",
+            json={"question_id": question["id"], "selected_option_id": "A"},
+        )
+        assert submitted.status_code == 200
+        assert submitted.json()["session_completed"] is True
+        summary = client.get(f"/v1/behavioural/session/{session_id}/summary")
+        assert summary.status_code == 200
+        assert summary.json()["procedural_compliance_score"] == 100.0
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_interview_is_persisted_and_can_finish_after_session_reload(monkeypatch):
+    client, session = _client(monkeypatch)
+    try:
+        started = client.post("/v1/behavioural/interview/start", json={
+            "course_id": 11, "officer_name": "Test Learner", "target_duration_minutes": 30,
+        })
+        assert started.status_code == 201
+        session_id = started.json()["session_id"]
+
+        answered = client.post("/v1/behavioural/interview/turn", json={
+            "session_id": session_id,
+            "officer_response": "I would use evidence, communicate the risks, and make a transparent decision.",
+            "elapsed_seconds": 75,
+            "input_mode": "typed",
+        })
+        assert answered.status_code == 200
+        assert answered.json()["turns_completed"] == 1
+        session.expire_all()  # Emulates loading state afresh after a process restart.
+        stored = session.get(SessionRecord, session_id)
+        assert stored.state["turns"][0]["elapsed_seconds"] == 75
+
+        finished = client.post(f"/v1/behavioural/interview/{session_id}/end")
+        assert finished.status_code == 200
+        assert finished.json()["total_turns"] == 1
+        assert client.post(f"/v1/behavioural/interview/{session_id}/end").json() == finished.json()
     finally:
         main.app.dependency_overrides.clear()
         session.close()

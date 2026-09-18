@@ -9,6 +9,8 @@
 - Preserved `restructure/` as requested.
 - Preserved `backend/`, `content-pipeline/` and `supabase/` because they still serve as migration/parity references for specialist behavior not yet fully implemented in the new services. Remove them only after the remaining compatibility catalogue is closed.
 - Restored the standard `rajesh.kumar@mospi.gov.in` / `Learner@123` quick login through an explicit local-demo identity mode with create-and-repair regression coverage.
+- Added the missing behavioural course/corpus/case/session compatibility endpoints and made default Compose startup health-gated across every backend, labs, gateway and frontend.
+- Moved live behavioural interview transcripts, turn telemetry and final reports into assessment-owned PostgreSQL sessions, so an assessment-service restart no longer invalidates an active interview.
 
 ## 2026-09-17 — Service architecture migration started
 
