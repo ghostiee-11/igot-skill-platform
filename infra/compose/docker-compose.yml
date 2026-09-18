@@ -1,0 +1,180 @@
+name: igot-skill-platform
+
+x-service-environment: &service-environment
+  JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-me}
+  INTERNAL_EVENT_SECRET: ${INTERNAL_EVENT_SECRET:-local-internal-event-secret-change-me}
+  RABBITMQ_URL: amqp://igot:igot@rabbitmq:5672//
+  ARTIFACT_STORAGE_ROOT: /var/lib/igot/artifacts
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks: [platform]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: igot
+      POSTGRES_USER: igot_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-igot_admin}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U igot_admin -d igot"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [platform]
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: igot
+      RABBITMQ_DEFAULT_PASS: igot
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [platform]
+
+  identity:
+    <<: *service-defaults
+    build: ../../services/identity
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://identity_service:identity_service@postgres:5432/igot
+      DATABASE_SCHEMA: identity
+    ports: ["8101:8101"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_identity.main:app --host 0.0.0.0 --port 8101"]
+
+  learning:
+    <<: *service-defaults
+    build: ../../services/learning
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://learning_service:learning_service@postgres:5432/igot
+      DATABASE_SCHEMA: learning
+    ports: ["8102:8102"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_learning.main:app --host 0.0.0.0 --port 8102"]
+
+  assessment:
+    <<: *service-defaults
+    build: ../../services/assessment
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://assessment_service:assessment_service@postgres:5432/igot
+      DATABASE_SCHEMA: assessment
+      LEARNING_URL: http://learning:8102
+      COMPETENCY_URL: http://competency:8104
+    ports: ["8103:8103"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_assessment.main:app --host 0.0.0.0 --port 8103"]
+
+  competency:
+    <<: *service-defaults
+    build: ../../services/competency
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://competency_service:competency_service@postgres:5432/igot
+      DATABASE_SCHEMA: competency
+      LEARNING_SERVICE_URL: http://learning:8102
+    ports: ["8104:8104"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_competency.main:app --host 0.0.0.0 --port 8104"]
+
+  ai:
+    <<: *service-defaults
+    build: ../../services/ai
+    environment:
+      <<: *service-environment
+      PROVIDER_ORDER: ${AI_PROVIDER_ORDER:-groq,nim,gemini,openai}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      NIM_API_KEY: ${NIM_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports: ["8105:8105"]
+
+  content:
+    <<: *service-defaults
+    build: ../../services/content
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://content_service:content_service@postgres:5432/igot
+      DATABASE_SCHEMA: content
+      AI_SERVICE_URL: http://ai:8105
+    volumes:
+      - ../storage/artifacts:/var/lib/igot/artifacts
+    ports: ["8106:8106"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_content.main:app --host 0.0.0.0 --port 8106"]
+
+  labs:
+    <<: *service-defaults
+    profiles: ["labs"]
+    container_name: igot-labs-controller
+    build: ../../services/labs
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://labs_service:labs_service@postgres:5432/igot
+      DATABASE_SCHEMA: labs
+      DEFAULT_TTL_MINUTES: ${LAB_DEFAULT_TTL_MINUTES:-60}
+      PUBLIC_BASE_URL: http://localhost:8000
+      CONTROLLER_CONTAINER_NAME: igot-labs-controller
+    volumes:
+      - ../storage/artifacts:/var/lib/igot/artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["8107:8107"]
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_labs.main:app --host 0.0.0.0 --port 8107"]
+
+  gateway:
+    restart: unless-stopped
+    build: ../../apps/gateway
+    environment:
+      GATEWAY_IDENTITY_URL: http://identity:8101
+      GATEWAY_LEARNING_URL: http://learning:8102
+      GATEWAY_ASSESSMENT_URL: http://assessment:8103
+      GATEWAY_COMPETENCY_URL: http://competency:8104
+      GATEWAY_AI_URL: http://ai:8105
+      GATEWAY_CONTENT_URL: http://content:8106
+      GATEWAY_LABS_URL: http://labs:8107
+      GATEWAY_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - identity
+      - learning
+      - assessment
+      - competency
+      - ai
+      - content
+    ports: ["8000:8000"]
+    networks: [platform]
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ../../apps/frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    depends_on: [gateway]
+    ports: ["3000:3000"]
+    networks: [platform]
+
+networks:
+  platform:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  rabbitmq-data:

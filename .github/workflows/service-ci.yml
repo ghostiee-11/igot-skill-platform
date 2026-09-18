@@ -1,0 +1,76 @@
+name: Service CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/gateway/**"
+      - "services/**"
+      - "migrations/legacy/**"
+      - "infra/**"
+      - "contracts/**"
+      - "scripts/validate-contracts.py"
+      - ".github/workflows/service-ci.yml"
+  push:
+    branches: [main, "rebuild/**"]
+
+jobs:
+  python-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gateway
+            path: apps/gateway
+            extra: dev
+          - name: identity
+            path: services/identity
+            extra: test
+          - name: learning
+            path: services/learning
+            extra: test
+          - name: assessment
+            path: services/assessment
+            extra: test
+          - name: competency
+            path: services/competency
+            extra: test
+          - name: ai
+            path: services/ai
+            extra: test
+          - name: content
+            path: services/content
+            extra: test
+          - name: labs
+            path: services/labs
+            extra: test
+          - name: legacy-migration
+            path: migrations/legacy
+            extra: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.4"
+          enable-cache: true
+      - name: Install locked dependencies
+        working-directory: ${{ matrix.path }}
+        run: uv sync --frozen --extra "${{ matrix.extra }}"
+      - name: Test service
+        working-directory: ${{ matrix.path }}
+        run: uv run --frozen pytest -q
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f infra/compose/docker-compose.yml config --quiet
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/validate-contracts.py

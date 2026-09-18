@@ -1,4 +1,15 @@
-# iGOT Karmayogi (MoSPI) — Project Documentation
+# iGOT Skill Platform — Documentation
+
+## Service rebuild: start here
+
+- [Architecture](architecture/service-architecture.md) and [service catalogue](services/README.md): boundaries, ownership, interfaces and data.
+- [Migration status](migration/status.md) and [data mapping](migration/data-ownership.md): actual verification, baseline, records and rollback.
+- [Decisions](decisions/README.md): current architecture decisions.
+- [Feature migration catalogue](features/service-migration-catalogue.md) and [known issues](known-issues.md): retained behavior, owners and limits.
+- [Lab operations](operations/labs.md): execution boundary and lifecycle.
+- Deferred projects: [fresh frontend](plans/frontend-rebuild.md) and [cloud VM labs](plans/cloud-vm-labs.md).
+
+The original navigation below is historical context. Check old paths and completed-feature claims against migration status. Read the owning service contract before changes; update specs/changelog with behavior changes and use ADRs for architectural decisions. No cross-service implementation imports or schema access; no import-time migrations/seeding. Source, tests and migrations outweigh prose. Do not mark scaffolded or unverified features complete.
 
 Welcome to the centralized documentation hub for the **iGOT Karmayogi (MoSPI)** platform, built for the **Smart India Hackathon (SIH '26)**.
 

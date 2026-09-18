@@ -1,5 +1,7 @@
 # Feature Catalog & Specifications
 
+> Original platform specifications. Use the [migration catalogue](service-migration-catalogue.md) for new ownership and [migration status](../migration/status.md) for verified coverage. Old paths and completion claims are historical until revalidated.
+
 This directory contains comprehensive, feature-level architectural and functional specifications for the **iGOT Karmayogi (MoSPI)** platform.
 
 Each document provides deep technical context designed for **human developers** and **autonomous AI coding agents** to understand domain boundaries, user flows, database models, frontend components, API endpoints, and critical implementation constraints.

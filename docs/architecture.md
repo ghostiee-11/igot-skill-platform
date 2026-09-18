@@ -1,5 +1,7 @@
 # System Architecture & Engineering Standards
 
+> Historical monolith architecture. Use [service architecture](architecture/service-architecture.md), [ADR 0003](decisions/0003-domain-services.md), and [migration status](migration/status.md) for the rebuild. Old runtime instructions do not override owned schemas or explicit migrations.
+
 > **Document Type:** System Architecture & Agent Knowledge Base  
 > **Phase:** Phase 0 Implementation (Smart India Hackathon SIH '26)  
 > **Target Audience:** AI Coding Agents, Software Engineers, Evaluators  

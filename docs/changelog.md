@@ -1,5 +1,14 @@
 # 📜 Repository Changelog
 
+## 2026-09-17 — Service architecture migration started
+
+- Architecture/migration: baseline `final-final` (`7123bd3`) fast-forwarded into `main` and pushed. Implementation is on `rebuild/service-architecture`, pending user review before merge.
+- Frontend screens are preserved during relocation; backend ownership is split into domain services.
+- Data requires explicit migration to owned schemas; no live data migration was run.
+- Decisions: [domain services](decisions/0003-domain-services.md), [lab runtime](decisions/0004-lab-runtime.md).
+- Validation and remaining work: [migration status](migration/status.md). This entry does not claim full parity.
+- Fresh frontend and cloud VM execution are deferred.
+
 All notable changes to the **iGOT Karmayogi (MoSPI)** platform are documented in this file.
 
 This changelog serves as the authoritative source of change history for **engineering team members** and **AI coding agents** to provide context for upcoming features, bug fixes, and architectural evolutions.
