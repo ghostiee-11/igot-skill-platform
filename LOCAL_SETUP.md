@@ -22,6 +22,13 @@ The copied environment file contains development-only defaults. Replace its sign
 
 Compose waits for PostgreSQL and RabbitMQ, then each stateful service runs its Alembic migration before starting. It does not import legacy data or seed demonstration accounts automatically.
 
+The local Compose configuration enables the frontend's standard learner quick login:
+
+- Email: `rajesh.kumar@mospi.gov.in`
+- Password: `Learner@123`
+
+Identity creates or repairs this learner when those exact credentials are used, so it survives database resets and incomplete demo imports. Set `DEMO_ACCOUNTS_ENABLED=false` outside local/demo environments.
+
 ## Verify the stack
 
 | Component | URL |

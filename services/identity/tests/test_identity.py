@@ -5,6 +5,7 @@ from sqlalchemy.pool import StaticPool
 from types import SimpleNamespace
 
 from igot_identity.adapters.database import Base, get_db
+from igot_identity.api import routes
 from igot_identity.application import security
 from igot_identity.domain.models import User
 from igot_identity.main import app
@@ -85,6 +86,50 @@ def test_register_login_and_profile(monkeypatch):
             json={"email": "user@example.gov.in", "password": "secret"},
         )
         assert inactive.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+        session.close()
+
+
+def test_configured_demo_learner_is_created_and_repaired(monkeypatch):
+    client, session = _client(monkeypatch)
+    monkeypatch.setattr(
+        routes,
+        "settings",
+        SimpleNamespace(
+            demo_accounts_enabled=True,
+            demo_learner_email="rajesh.kumar@mospi.gov.in",
+            demo_learner_password="Learner@123",
+            demo_learner_name="Rajesh Kumar",
+        ),
+    )
+    credentials = {"email": "rajesh.kumar@mospi.gov.in", "password": "Learner@123"}
+    try:
+        first = client.post("/v1/auth/login", json=credentials)
+        assert first.status_code == 200
+        assert first.json()["role"] == "learner"
+        assert first.json()["onboarding_completed"] is True
+
+        user = session.scalar(select(User).where(User.email == credentials["email"]))
+        user.password_hash = security.hash_password("wrong-password")
+        user.role = "admin"
+        user.is_active = False
+        user.profile.onboarding_completed = False
+        session.commit()
+
+        repaired = client.post("/v1/auth/login", json=credentials)
+        assert repaired.status_code == 200
+        session.refresh(user)
+        assert user.role == "learner"
+        assert user.is_active is True
+        assert user.profile.onboarding_completed is True
+        assert security.verify_password("Learner@123", user.password_hash)
+
+        wrong = client.post(
+            "/v1/auth/login",
+            json={"email": credentials["email"], "password": "not-the-demo-password"},
+        )
+        assert wrong.status_code == 401
     finally:
         app.dependency_overrides.clear()
         session.close()

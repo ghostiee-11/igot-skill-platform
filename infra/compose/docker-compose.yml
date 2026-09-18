@@ -58,6 +58,10 @@ services:
       <<: *service-environment
       DATABASE_URL: postgresql+psycopg://identity_service:identity_service@postgres:5432/igot
       DATABASE_SCHEMA: identity
+      DEMO_ACCOUNTS_ENABLED: ${DEMO_ACCOUNTS_ENABLED:-true}
+      DEMO_LEARNER_EMAIL: ${DEMO_LEARNER_EMAIL:-rajesh.kumar@mospi.gov.in}
+      DEMO_LEARNER_PASSWORD: ${DEMO_LEARNER_PASSWORD:-Learner@123}
+      DEMO_LEARNER_NAME: ${DEMO_LEARNER_NAME:-Rajesh Kumar}
     ports: ["8101:8101"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_identity.main:app --host 0.0.0.0 --port 8101"]
 

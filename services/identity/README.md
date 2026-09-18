@@ -4,6 +4,8 @@ Owns: Accounts, credentials, roles, profile editing, onboarding and departments.
 
 Public registration creates learners. Identity alone verifies passwords and issues user tokens. Service consumers use the identity contract rather than reading identity tables.
 
+The optional `DEMO_ACCOUNTS_ENABLED` mode guarantees the configured learner quick login by creating or repairing that learner only when the exact configured email/password pair is submitted. It is enabled by local Compose and disabled by the standalone service default; do not enable it in production.
+
 ## Boundaries
 
 - HTTP: `/v1`, development port `8101`.

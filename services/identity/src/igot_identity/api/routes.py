@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from igot_identity.adapters.database import get_db
 from igot_identity.application.security import create_token, current_user, hash_password, verify_password
+from igot_identity.config import settings
 from igot_identity.domain.models import Department, User, UserProfile
 
 router = APIRouter(prefix="/v1")
@@ -75,6 +76,38 @@ def _profile_response(user: User) -> dict:
         "current_streak_days": p.current_streak_days, "onboarding_completed": p.onboarding_completed}}
 
 
+def _demo_learner(req: LoginRequest, db: Session) -> User | None:
+    """Provision/repair the local learner only for the exact configured credentials."""
+    if not settings.demo_accounts_enabled or not settings.demo_learner_password:
+        return None
+    email = req.email.lower()
+    if email != settings.demo_learner_email or req.password != settings.demo_learner_password:
+        return None
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=hash_password(req.password),
+            full_name=settings.demo_learner_name,
+            role="learner",
+            is_active=True,
+        )
+        user.profile = UserProfile(onboarding_completed=True)
+        db.add(user)
+    else:
+        if not verify_password(req.password, user.password_hash):
+            user.password_hash = hash_password(req.password)
+        user.role = "learner"
+        user.is_active = True
+        if user.profile is None:
+            user.profile = UserProfile(onboarding_completed=True)
+        else:
+            user.profile.onboarding_completed = True
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.post("/auth/register", status_code=201)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     email = req.email.lower()
@@ -90,7 +123,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == req.email.lower()))
+    user = _demo_learner(req, db) or db.scalar(select(User).where(User.email == req.email.lower()))
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(401, "Incorrect official email or password")
     if not user.is_active:

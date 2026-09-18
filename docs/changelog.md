@@ -8,6 +8,7 @@
 - Replaced the monolith-era `LOCAL_SETUP.md` and root `.env.example` with Compose-first service architecture instructions and environment names.
 - Preserved `restructure/` as requested.
 - Preserved `backend/`, `content-pipeline/` and `supabase/` because they still serve as migration/parity references for specialist behavior not yet fully implemented in the new services. Remove them only after the remaining compatibility catalogue is closed.
+- Restored the standard `rajesh.kumar@mospi.gov.in` / `Learner@123` quick login through an explicit local-demo identity mode with create-and-repair regression coverage.
 
 ## 2026-09-17 — Service architecture migration started
 
