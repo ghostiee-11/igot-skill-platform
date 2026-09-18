@@ -5,6 +5,7 @@
 - Removed the superseded root `ai-service/` placeholder; the active implementation is `services/ai/`.
 - Removed the empty local `Plan/` directory and obsolete `docs/superpowers/` implementation drafts.
 - Removed regenerable dependency, virtual-environment, build and test-cache directories from the workspace.
+- Replaced the monolith-era `LOCAL_SETUP.md` and root `.env.example` with Compose-first service architecture instructions and environment names.
 - Preserved `restructure/` as requested.
 - Preserved `backend/`, `content-pipeline/` and `supabase/` because they still serve as migration/parity references for specialist behavior not yet fully implemented in the new services. Remove them only after the remaining compatibility catalogue is closed.
 
