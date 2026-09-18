@@ -11,6 +11,7 @@
 - Restored the standard `rajesh.kumar@mospi.gov.in` / `Learner@123` quick login through an explicit local-demo identity mode with create-and-repair regression coverage.
 - Added the missing behavioural course/corpus/case/session compatibility endpoints and made default Compose startup health-gated across every backend, labs, gateway and frontend.
 - Moved live behavioural interview transcripts, turn telemetry and final reports into assessment-owned PostgreSQL sessions, so an assessment-service restart no longer invalidates an active interview.
+- Restored authenticated live-interview dictation by migrating the Sarvam WAV transcription endpoint and its Compose configuration into the assessment service.
 
 ## 2026-09-17 — Service architecture migration started
 

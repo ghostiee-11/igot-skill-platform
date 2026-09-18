@@ -11,11 +11,13 @@ This runbook starts the service-based platform defined in `infra/compose/docker-
 
 ## Start the standard stack
 
+Set `SARVAM_API_KEY` in the root `.env` file to enable the live interview's **Dictate answer** speech-to-text control.
+
 From the repository root:
 
 ```powershell
 Copy-Item .env.example .env
-docker compose -f infra/compose/docker-compose.yml up -d --build
+docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build
 ```
 
 The copied environment file contains development-only defaults. Replace its signing secrets before sharing an environment. AI keys are optional; the AI service uses deterministic fallback behavior when no provider is configured.
@@ -53,8 +55,8 @@ Service health endpoints are available directly during development:
 Inspect startup and migration failures with:
 
 ```powershell
-docker compose -f infra/compose/docker-compose.yml ps
-docker compose -f infra/compose/docker-compose.yml logs --tail 200 gateway identity learning assessment competency ai content
+docker compose --env-file .env -f infra/compose/docker-compose.yml ps
+docker compose --env-file .env -f infra/compose/docker-compose.yml logs --tail 200 gateway identity learning assessment competency ai content
 ```
 
 ## Local labs
@@ -109,7 +111,7 @@ Read `migrations/legacy/README.md` before apply mode. Apply only to a disposable
 Stop the standard stack while preserving PostgreSQL and RabbitMQ volumes:
 
 ```powershell
-docker compose -f infra/compose/docker-compose.yml down
+docker compose --env-file .env -f infra/compose/docker-compose.yml down
 ```
 
 To erase local databases and broker state, add `--volumes`. That operation is destructive and is not required for ordinary restarts.

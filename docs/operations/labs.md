@@ -33,7 +33,7 @@ Failure states must be visible to users; a container launch failure must never r
 The default local stack builds the controller and both allowlisted runtime images:
 
 ```powershell
-docker compose -f infra/compose/docker-compose.yml up -d --build
+docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build
 ```
 
 `GET http://localhost:8107/v1/ready` checks both PostgreSQL and Docker access. The demo target exists to verify lifecycle and isolation plumbing; it is explicitly not an intentionally vulnerable target.

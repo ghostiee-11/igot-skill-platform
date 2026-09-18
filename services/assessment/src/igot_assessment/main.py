@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime,timezone
 from uuid import uuid4
 import httpx
-from fastapi import Depends,FastAPI,Header,HTTPException,Query
+from fastapi import Depends,FastAPI,File,Header,HTTPException,Query,UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func,select,text
 from sqlalchemy.orm import Session
@@ -61,6 +61,18 @@ class InterviewTurn(BaseModel):
 
 class InterviewEnd(BaseModel):
     session_id:str
+
+MAX_DICTATION_BYTES=25*1024*1024
+SARVAM_STT_URL="https://api.sarvam.ai/speech-to-text"
+
+def _sarvam_error(response:httpx.Response)->str:
+    try:
+        body=response.json()
+        if isinstance(body,dict):
+            error=body.get("error")
+            return str(error.get("message") if isinstance(error,dict) else body.get("message") or response.text)
+    except ValueError:pass
+    return response.text or f"HTTP {response.status_code}"
 
 def _quiz_or_404(db:Session,quiz_id:int)->GeneratedQuiz:
     quiz=db.get(GeneratedQuiz,quiz_id)
@@ -228,6 +240,24 @@ def _interview_record(session_id:str,principal:Principal,db:Session)->SessionRec
     record=db.get(SessionRecord,session_id)
     if not record or record.user_id!=principal.user_id or record.engine!="behavioural_interview":raise HTTPException(404,"Interview session not found")
     return record
+
+@app.post("/v1/behavioural/interview/transcribe")
+async def transcribe_interview(audio:UploadFile=File(...),_:Principal=Depends(current_principal)):
+    api_key=get_settings().sarvam_api_key
+    if not api_key:raise HTTPException(503,"Dictation transcription is not configured. Set SARVAM_API_KEY and restart the assessment service.")
+    payload=await audio.read(MAX_DICTATION_BYTES+1)
+    if not payload:raise HTTPException(400,"No audio was recorded")
+    if len(payload)>MAX_DICTATION_BYTES:raise HTTPException(413,"The recording is too large to transcribe")
+    filename=audio.filename or "dictation.wav";content_type=(audio.content_type or "audio/wav").split(";",1)[0].lower()
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            response=await client.post(SARVAM_STT_URL,headers={"api-subscription-key":api_key},data={"model":"saaras:v4","language_code":"en-IN"},files={"file":(filename,payload,content_type)})
+            response.raise_for_status();result=response.json()
+    except httpx.HTTPStatusError as exc:raise HTTPException(502,f"Speech transcription was rejected: {_sarvam_error(exc.response)}") from exc
+    except (httpx.RequestError,ValueError) as exc:raise HTTPException(502,"Speech transcription is temporarily unavailable") from exc
+    transcript=str(result.get("transcript") or "").strip()
+    if not transcript:raise HTTPException(422,"No speech was detected. Please speak clearly and try again.")
+    return {"text":transcript,"provider":"sarvam","request_id":result.get("request_id")}
 
 @app.post("/v1/behavioural/interview/start",status_code=201)
 async def start_interview(req:InterviewStart,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):

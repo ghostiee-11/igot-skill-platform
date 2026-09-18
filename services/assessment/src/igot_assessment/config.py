@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     learning_url: str = "http://learning:8102"
     competency_url: str = "http://competency:8104"
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672//"
+    sarvam_api_key: str = ""
     auto_create_schema: bool = False
 
 @lru_cache

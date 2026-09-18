@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
+from types import SimpleNamespace
 
 from igot_assessment import main
 from igot_assessment.database import Base, GeneratedQuiz, GeneratedQuizQuestion, OutboxEvent, SessionRecord, get_db
@@ -211,6 +212,42 @@ def test_interview_is_persisted_and_can_finish_after_session_reload(monkeypatch)
         assert finished.status_code == 200
         assert finished.json()["total_turns"] == 1
         assert client.post(f"/v1/behavioural/interview/{session_id}/end").json() == finished.json()
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_dictation_endpoint_forwards_wav_to_speech_provider(monkeypatch):
+    client, session = _client(monkeypatch)
+
+    class ProviderResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"transcript": "This is my dictated answer.", "request_id": "speech-1"}
+
+    class ProviderClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return None
+
+        async def post(self, *_, **kwargs):
+            assert kwargs["files"]["file"][2] == "audio/wav"
+            assert kwargs["headers"]["api-subscription-key"] == "test-key"
+            return ProviderResponse()
+
+    try:
+        monkeypatch.setattr(main, "get_settings", lambda: SimpleNamespace(sarvam_api_key="test-key"))
+        monkeypatch.setattr(main.httpx, "AsyncClient", lambda **_: ProviderClient())
+        response = client.post(
+            "/v1/behavioural/interview/transcribe",
+            files={"audio": ("dictation.wav", b"RIFF" + b"0" * 2000, "audio/wav")},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"text": "This is my dictated answer.", "provider": "sarvam", "request_id": "speech-1"}
     finally:
         main.app.dependency_overrides.clear()
         session.close()
