@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { fetchApi } from "@/lib/api";
+import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import confetti from "canvas-confetti";
 
 interface ScenarioListItem {
@@ -99,6 +100,7 @@ const DOMAIN_ICONS: Record<string, any> = {
 export default function CyberScenariosPage() {
   const [scenarios, setScenarios] = useState<ScenarioListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>("All");
 
   // Active Session State
@@ -113,7 +115,7 @@ export default function CyberScenariosPage() {
   useEffect(() => {
     fetchApi<ScenarioListItem[]>("/digital-governance/scenarios")
       .then((data) => setScenarios(data))
-      .catch((err) => console.error("Error loading scenarios:", err))
+      .catch((err: Error) => setLoadError(err.message || "Scenarios could not be loaded."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -541,6 +543,8 @@ export default function CyberScenariosPage() {
 
       {/* Main Content: Filter & Scenarios */}
       <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+
+      {loadError && <ErrorNotice message={`Scenarios are unavailable: ${loadError}`} />}
 
       {/* Domain Filter Pills Card */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-2">
