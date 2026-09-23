@@ -92,6 +92,10 @@ def test_discover_enroll_player_progress_and_dashboard():
     try:
         _seed_course(session)
 
+        context = client.get("/v1/internal/courses/11/interview-context")
+        assert context.status_code == 200
+        assert "# Evidence" in context.json()["material"]
+
         discovered = client.get("/v1/discover/courses?q=Official").json()
         assert discovered["total_results"] == 1
         assert discovered["courses"][0]["modules_count"] == 1

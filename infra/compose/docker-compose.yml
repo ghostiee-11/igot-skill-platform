@@ -94,6 +94,7 @@ services:
       DATABASE_SCHEMA: assessment
       LEARNING_URL: http://learning:8102
       COMPETENCY_URL: http://competency:8104
+      AI_SERVICE_URL: http://ai:8105
       SARVAM_API_KEY: ${SARVAM_API_KEY:-}
     ports: ["8103:8103"]
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn igot_assessment.main:app --host 0.0.0.0 --port 8103"]
@@ -126,6 +127,7 @@ services:
       <<: *service-environment
       PROVIDER_ORDER: ${AI_PROVIDER_ORDER:-groq,nim,gemini,openai}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
       NIM_API_KEY: ${NIM_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

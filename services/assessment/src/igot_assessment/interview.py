@@ -5,21 +5,21 @@ from typing import Any
 
 COMPETENCIES = [
     "Course Knowledge",
-    "Communication",
-    "Decision Making",
     "Leadership",
-    "Ethical Reasoning",
-    "Planning and Coordination",
+    "Communication",
+    "Project Management",
+    "Ethics",
+    "Decision Making",
     "Change Management",
 ]
 
 PHASES = [
-    ("Course understanding", "Course Knowledge"),
-    ("Applied communication", "Communication"),
-    ("Decision scenario", "Decision Making"),
-    ("Leadership scenario", "Leadership"),
-    ("Ethics and public service", "Ethical Reasoning"),
-    ("Implementation and change", "Change Management"),
+    ("Course Knowledge & Application", "Course Knowledge"),
+    ("Planning & Execution", "Project Management"),
+    ("Leading People Under Pressure", "Leadership"),
+    ("Integrity & Ethical Dilemmas", "Ethics"),
+    ("Leading Change", "Change Management"),
+    ("Judgement & Reflection", "Decision Making"),
 ]
 
 KEYWORDS = {
@@ -27,8 +27,8 @@ KEYWORDS = {
     "Communication": ("communicate", "listen", "explain", "stakeholder", "feedback"),
     "Decision Making": ("decide", "option", "risk", "evidence", "trade-off", "priority"),
     "Leadership": ("lead", "team", "delegate", "mentor", "accountability"),
-    "Ethical Reasoning": ("ethical", "integrity", "fair", "transparent", "public interest"),
-    "Planning and Coordination": ("plan", "coordinate", "timeline", "milestone", "resource"),
+    "Ethics": ("ethical", "integrity", "fair", "transparent", "public interest"),
+    "Project Management": ("plan", "coordinate", "timeline", "milestone", "resource"),
     "Change Management": ("change", "adoption", "resistance", "transition", "training"),
 }
 
@@ -38,11 +38,11 @@ def _question(index: int, state: dict[str, Any]) -> str:
     title = state["course_title"]
     questions = [
         f"Good morning, {name}. What is the most useful idea you took from {title}, and where would you apply it in your work?",
-        "Describe how you would explain that idea to colleagues who have different levels of technical knowledge.",
-        "Suppose the available evidence is incomplete but a decision is urgent. How would you proceed, and what safeguards would you use?",
-        "Tell the board about a difficult team situation you would need to lead through. What would you do first, and why?",
+        "Suppose regional offices fall behind while implementing this course's approach. How would you re-plan, monitor progress, and escalate risks?",
+        "Your team finds an error in figures already shared with a senior official. How would you lead the correction while keeping accountability?",
         "Imagine that a senior colleague asks you to bypass a required process to save time. How would you respond?",
-        "How would you turn your proposed approach into an implementation plan and help people adopt the change?",
+        "Staff resist a new way of working recommended by this course. What would you do first, and how would you measure adoption?",
+        "Describe a hard trade-off between speed and accuracy. What did you decide, and what would you change next time?",
     ]
     if index < len(questions):
         return questions[index]
@@ -73,7 +73,41 @@ def tags_for(text: str) -> list[str]:
     return [name for name, words in KEYWORDS.items() if any(word in lower for word in words)]
 
 
-def submit_turn(state: dict[str, Any], officer_response: str, elapsed_seconds: int, metrics: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def turn_ai_request(state: dict[str, Any], officer_response: str) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    answer_number = len(state.get("turns", [])) + 1
+    final = answer_number >= len(PHASES)
+    next_phase = PHASES[min(answer_number, len(PHASES) - 1)]
+    transcript = "\n".join(f"{entry['speaker']}: {entry['content']}" for entry in state.get("transcript", [])[-12:])
+    course_context=f"Organization: {state.get('organization','iGOT Karmayogi')}\nOverview: {state.get('overview','')}\nModules: {', '.join(state.get('modules',[]))}\nCourse material:\n{state.get('material','')[:5000]}"
+    task = (
+        f"Close the interview by reacting to one specific point and thanking {state['officer_name']}. Do not ask a question."
+        if final else
+        f"Assess {next_phase[1]}. React briefly to a specific point, then ask exactly one realistic follow-up question for the phase '{next_phase[0]}'."
+    )
+    messages = [
+        {"role": "system", "content": "You are a senior Government of India oral interview board member. Be professional, concise, evidence-led, and never invent facts the officer did not state."},
+        {"role": "user", "content": f"Course: {state['course_title']}\n{course_context}\nConversation:\n{transcript}\nOfficer's latest answer: {officer_response}\n\n{task}\nApproved competencies: {', '.join(COMPETENCIES)}. Return JSON only."},
+    ]
+    schema = {"reply": "string", "competencies_shown": ["one or more approved competency names"], "feedback": "one constructive sentence"}
+    return messages, schema
+
+
+def report_ai_request(state: dict[str, Any]) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    transcript = "\n".join(f"{entry['speaker']}: {entry['content']}" for entry in state.get("transcript", []))
+    messages = [
+        {"role": "system", "content": "You chair a Government of India oral interview board. Score only evidence actually present in the transcript. Missing evidence must score below 50. Be constructive and specific."},
+        {"role": "user", "content": f"Course: {state['course_title']}\nCourse material:\n{state.get('material','')[:4000]}\nCompetencies: {', '.join(COMPETENCIES)}\nTranscript:\n{transcript}\nReturn JSON only. Scores must be from 0 to 100."},
+    ]
+    schema = {
+        "competency_scores": {"<competency>": {"score": 0, "evidence": "string", "recommendation": "string"}},
+        "overall_assessment": "string", "course_understanding": "string", "communication_assessment": "string",
+        "decision_making_assessment": "string", "conversation_analysis": "string", "strengths": ["string"],
+        "improvements": ["string"], "upskilling": ["string"],
+    }
+    return messages, schema
+
+
+def submit_turn(state: dict[str, Any], officer_response: str, elapsed_seconds: int, metrics: dict[str, Any], ai_result: dict[str, Any] | None = None, ai_provider: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     state = {**state, "turns": list(state.get("turns", [])), "transcript": list(state.get("transcript", []))}
     answer_number = len(state["turns"]) + 1
     if answer_number > len(PHASES):
@@ -81,7 +115,9 @@ def submit_turn(state: dict[str, Any], officer_response: str, elapsed_seconds: i
     clean_text = officer_response.strip()
     if not clean_text:
         raise ValueError("An interview answer cannot be empty")
-    tags = tags_for(clean_text)
+    supplied_tags=ai_result.get("competencies_shown",[]) if isinstance(ai_result,dict) else []
+    if not isinstance(supplied_tags,list):supplied_tags=[]
+    tags=[item for item in supplied_tags if item in COMPETENCIES] or tags_for(clean_text)
     state["transcript"].append({
         "speaker": f"Officer {state['officer_name']}",
         "content": clean_text,
@@ -97,7 +133,8 @@ def submit_turn(state: dict[str, Any], officer_response: str, elapsed_seconds: i
     })
     final = answer_number == len(PHASES)
     next_index = answer_number
-    next_question = _question(next_index, state)
+    generated_reply=str(ai_result.get("reply") or "").strip() if isinstance(ai_result,dict) else ""
+    next_question = generated_reply or _question(next_index, state)
     next_phase = PHASES[min(next_index, len(PHASES) - 1)]
     state["transcript"].append({
         "speaker": "AI Interviewer",
@@ -116,9 +153,10 @@ def submit_turn(state: dict[str, Any], officer_response: str, elapsed_seconds: i
         "turns_completed": answer_number,
         "is_final_turn": final,
         "pacing_advice": "That was the final question. Your report is being prepared." if final else f"Question {answer_number + 1} of {len(PHASES)}. About {remaining} minutes remain.",
-        "acknowledgement_note": "A concrete example will make the evidence stronger." if len(clean_text.split()) < 25 else "Your answer included useful supporting detail.",
+        "acknowledgement_note": (str(ai_result.get("feedback") or "").strip() if isinstance(ai_result,dict) else "") or ("A concrete example will make the evidence stronger." if len(clean_text.split()) < 25 else "Your answer included useful supporting detail."),
         "detected_competencies": tags,
         "delivery_feedback": _delivery_feedback(metrics),
+        "ai_provider": ai_provider or "deterministic-fallback",
     }
     return state, response
 
@@ -150,7 +188,7 @@ def _delivery_feedback(metrics: dict[str, Any]) -> str | None:
     return "Your speaking pace was within a clear conversational range."
 
 
-def build_report(session_id: str, state: dict[str, Any]) -> dict[str, Any]:
+def build_report(session_id: str, state: dict[str, Any], ai_result: dict[str, Any] | None = None, ai_provider: str | None = None) -> dict[str, Any]:
     turns = state.get("turns", [])
     competency_scores: dict[str, dict[str, Any]] = {}
     for competency in COMPETENCIES:
@@ -158,12 +196,19 @@ def build_report(session_id: str, state: dict[str, Any]) -> dict[str, Any]:
         word_count = sum(len(turn.get("response", "").split()) for turn in matching)
         score = min(90.0, 30.0 + len(matching) * 25.0 + min(word_count, 70) * 0.5) if matching else 25.0
         evidence = matching[0]["response"][:180] if matching else "Not clearly demonstrated in the recorded answers."
+        generated_scores=ai_result.get("competency_scores") if isinstance(ai_result,dict) else None
+        generated=generated_scores.get(competency,{}) if isinstance(generated_scores,dict) else {}
+        if isinstance(generated,dict):
+            try:score=max(0.0,min(100.0,float(generated.get("score",score))))
+            except (TypeError,ValueError):pass
+            evidence=str(generated.get("evidence") or evidence)
+        recommendation=str(generated.get("recommendation") or f"Prepare a specific situation-action-result example showing {competency.lower()}.") if isinstance(generated,dict) else f"Prepare a specific situation-action-result example showing {competency.lower()}."
         competency_scores[competency] = {
             "competency_name": competency,
             "score_percent": round(score, 1),
             "rating_band": _band(score),
             "key_evidence": evidence,
-            "growth_opportunity": f"Prepare a specific situation-action-result example showing {competency.lower()}.",
+            "growth_opportunity": recommendation,
         }
     overall = round(sum(item["score_percent"] for item in competency_scores.values()) / len(competency_scores), 1)
     ranked = sorted(competency_scores.values(), key=lambda item: item["score_percent"], reverse=True)
@@ -177,7 +222,13 @@ def build_report(session_id: str, state: dict[str, Any]) -> dict[str, Any]:
     pauses = _total(turns, "pauses_count")
     fillers = _total(turns, "filler_words_count")
     answered = len(turns)
-    assessment = f"You completed {answered} of {len(PHASES)} interview questions with an indicative overall score of {overall:.0f}/100."
+    fallback_assessment=f"You completed {answered} of {len(PHASES)} interview questions with an indicative overall score of {overall:.0f}/100."
+    generated=ai_result if isinstance(ai_result,dict) else {}
+    def generated_text(key:str,fallback:str)->str:
+        value=generated.get(key);return value.strip() if isinstance(value,str) and value.strip() else fallback
+    def generated_list(key:str,fallback:list[str])->list[str]:
+        value=generated.get(key);clean=[str(item).strip() for item in value if str(item).strip()] if isinstance(value,list) else [];return clean[:5] or fallback
+    assessment=generated_text("overall_assessment",fallback_assessment)
     return {
         "session_id": session_id,
         "course_id": state["course_id"],
@@ -188,17 +239,17 @@ def build_report(session_id: str, state: dict[str, Any]) -> dict[str, Any]:
         "overall_score_percent": overall,
         "overall_rating_band": _band(overall),
         "overall_assessment": assessment,
-        "course_understanding": competency_scores["Course Knowledge"]["key_evidence"],
-        "communication_assessment": f"The interview recorded {answered} answers. Use concise, structured examples to strengthen clarity.",
-        "decision_making_assessment": competency_scores["Decision Making"]["key_evidence"],
+        "course_understanding": generated_text("course_understanding",competency_scores["Course Knowledge"]["key_evidence"]),
+        "communication_assessment": generated_text("communication_assessment",f"The interview recorded {answered} answers. Use concise, structured examples to strengthen clarity."),
+        "decision_making_assessment": generated_text("decision_making_assessment",competency_scores["Decision Making"]["key_evidence"]),
         "executive_summary": assessment,
         "competency_scores": competency_scores,
-        "core_strengths": [f"{item['competency_name']}: {item['key_evidence']}" for item in ranked[:2]],
-        "areas_for_improvement": [f"{item['competency_name']}: {item['growth_opportunity']}" for item in ranked[-2:]],
+        "core_strengths": generated_list("strengths",[f"{item['competency_name']}: {item['key_evidence']}" for item in ranked[:2]]),
+        "areas_for_improvement": generated_list("improvements",[f"{item['competency_name']}: {item['growth_opportunity']}" for item in ranked[-2:]]),
         "priority_development_areas": [item["competency_name"] for item in ranked[-2:]],
-        "recommended_upskilling": ["Revisit the course modules and connect each concept to a workplace example.", "Practise the situation-action-result answer structure."],
+        "recommended_upskilling": generated_list("upskilling",["Revisit the course modules and connect each concept to a workplace example.", "Practise the situation-action-result answer structure."]),
         "recommended_apar_actions": [],
-        "conversation_analysis": "Assessment uses only the officer's recorded answers and observable browser telemetry.",
+        "conversation_analysis": generated_text("conversation_analysis","Assessment uses only the officer's recorded answers and observable browser telemetry."),
         "video_behavioural_observations": {
             "posture_stability": "Not captured" if posture is None else ("Steady" if posture >= 75 else "Some movement observed"),
             "posture_stability_score": posture,
@@ -219,5 +270,5 @@ def build_report(session_id: str, state: dict[str, Any]) -> dict[str, Any]:
         },
         "transcript": state.get("transcript", []),
         "observable_signals_disclaimer": "Observable browser signals do not constitute emotional profiling, psychological diagnosis, or character judgement.",
-        "evaluation_method": "Indicative rules-based scoring from the persisted interview transcript and captured telemetry.",
+        "evaluation_method": f"AI evaluation from the persisted transcript using {ai_provider}." if ai_provider else "Indicative rules-based scoring from the persisted interview transcript and captured telemetry.",
     }

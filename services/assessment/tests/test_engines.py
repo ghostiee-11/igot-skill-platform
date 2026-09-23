@@ -189,14 +189,37 @@ def test_behavioural_case_catalogue_and_session(monkeypatch):
 
 def test_interview_is_persisted_and_can_finish_after_session_reload(monkeypatch):
     client, session = _client(monkeypatch)
+
+    async def interview_ai(_messages, schema, _authorization):
+        if "reply" in schema:
+            return ({
+                "reply": "You mentioned transparent evidence. How would you explain a disputed result to a non-technical stakeholder?",
+                "competencies_shown": ["Course Knowledge", "Communication"],
+                "feedback": "You connected evidence with transparent communication.",
+            }, "groq")
+        return ({
+            "competency_scores": {
+                "Course Knowledge": {"score": 82, "evidence": "Used evidence explicitly.", "recommendation": "Add a workplace example."},
+            },
+            "overall_assessment": "The officer gave an evidence-led answer.",
+            "strengths": ["Evidence-led reasoning"],
+            "improvements": ["Add more operational detail"],
+            "upskilling": ["Practise stakeholder briefings"],
+        }, "groq")
+
+    monkeypatch.setattr(main, "_interview_ai", interview_ai)
+    async def interview_context(_course_id):
+        return {"title":"Official Statistics","organization":"MoSPI","overview":"Official evidence","modules":["Evidence"],"material":"Published data and transparent decisions"}
+    monkeypatch.setattr(main,"_interview_course_context",interview_context)
     try:
         started = client.post("/v1/behavioural/interview/start", json={
             "course_id": 11, "officer_name": "Test Learner", "target_duration_minutes": 30,
         })
         assert started.status_code == 201
         session_id = started.json()["session_id"]
+        assert "Official Statistics" in started.json()["initial_ai_question"]
 
-        answered = client.post("/v1/behavioural/interview/turn", json={
+        answered = client.post("/v1/behavioural/interview/turn", headers={"Authorization": "Bearer test"}, json={
             "session_id": session_id,
             "officer_response": "I would use evidence, communicate the risks, and make a transparent decision.",
             "elapsed_seconds": 75,
@@ -204,13 +227,17 @@ def test_interview_is_persisted_and_can_finish_after_session_reload(monkeypatch)
         })
         assert answered.status_code == 200
         assert answered.json()["turns_completed"] == 1
+        assert answered.json()["ai_provider"] == "groq"
+        assert "non-technical stakeholder" in answered.json()["ai_question"]
         session.expire_all()  # Emulates loading state afresh after a process restart.
         stored = session.get(SessionRecord, session_id)
         assert stored.state["turns"][0]["elapsed_seconds"] == 75
 
-        finished = client.post(f"/v1/behavioural/interview/{session_id}/end")
+        finished = client.post(f"/v1/behavioural/interview/{session_id}/end", headers={"Authorization": "Bearer test"})
         assert finished.status_code == 200
         assert finished.json()["total_turns"] == 1
+        assert finished.json()["overall_assessment"] == "The officer gave an evidence-led answer."
+        assert finished.json()["evaluation_method"].endswith("using groq.")
         assert client.post(f"/v1/behavioural/interview/{session_id}/end").json() == finished.json()
     finally:
         main.app.dependency_overrides.clear()

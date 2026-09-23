@@ -1,3 +1,4 @@
+import logging
 import random
 from contextlib import asynccontextmanager
 from datetime import datetime,timezone
@@ -11,13 +12,14 @@ from .config import get_settings
 from .behavioural import CASES,DOCUMENTS,all_cases,find_case,find_document
 from .database import Assessment,Attempt,CyberSandboxChallenge,GeneratedQuiz,OutboxEvent,Question,QuizAttempt,SessionRecord,TechnicalLabTemplate,get_db,initialize_database,engine
 from .engines import REGISTRY,public_state
-from .interview import PHASES,build_report,start_state,submit_turn
+from .interview import PHASES,build_report,report_ai_request,start_state,submit_turn,turn_ai_request
 from .schemas import AssessmentCreate,CalculationRequest,ChartRequest,SessionAnswer,SessionStart,SubmitAssessmentRequest
 from .security import Principal,current_principal,require_admin
 from .statistical import StatisticalInputError,calculate,chart_spec
 @asynccontextmanager
 async def lifespan(app:FastAPI): initialize_database(); yield
 app=FastAPI(title="iGOT Assessment Service",version="1.0",lifespan=lifespan)
+logger=logging.getLogger(__name__)
 
 class QuizSubmission(BaseModel):
     answers: dict[int,int]
@@ -241,6 +243,31 @@ def _interview_record(session_id:str,principal:Principal,db:Session)->SessionRec
     if not record or record.user_id!=principal.user_id or record.engine!="behavioural_interview":raise HTTPException(404,"Interview session not found")
     return record
 
+async def _interview_ai(messages:list[dict[str,str]],schema_hint:dict,authorization:str|None)->tuple[dict|None,str|None]:
+    if not authorization:return None,None
+    try:
+        async with httpx.AsyncClient(timeout=35) as client:
+            response=await client.post(f"{get_settings().ai_service_url}/v1/generate/json",headers={"Authorization":authorization},json={"messages":messages,"schema_hint":schema_hint,"preferred_provider":"groq"})
+            response.raise_for_status();payload=response.json();data=payload.get("data")
+            if not isinstance(data,dict) or not data:return None,None
+            return data,str(payload.get("provider") or "groq")
+    except httpx.HTTPStatusError as exc:
+        logger.warning("Interview AI request failed with status %s",exc.response.status_code)
+        return None,None
+    except (httpx.RequestError,ValueError,TypeError) as exc:
+        logger.warning("Interview AI request failed: %s",type(exc).__name__)
+        return None,None
+
+async def _interview_course_context(course_id:int)->dict:
+    cfg=get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response=await client.get(f"{cfg.learning_url}/v1/internal/courses/{course_id}/interview-context",headers={"X-Internal-Secret":cfg.internal_event_secret})
+            response.raise_for_status();return response.json()
+    except (httpx.HTTPError,ValueError):
+        logger.warning("Interview course context unavailable for course %s",course_id)
+        return await course_metadata(course_id)
+
 @app.post("/v1/behavioural/interview/transcribe")
 async def transcribe_interview(audio:UploadFile=File(...),_:Principal=Depends(current_principal)):
     api_key=get_settings().sarvam_api_key
@@ -262,32 +289,37 @@ async def transcribe_interview(audio:UploadFile=File(...),_:Principal=Depends(cu
 @app.post("/v1/behavioural/interview/start",status_code=201)
 async def start_interview(req:InterviewStart,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
     if req.target_duration_minutes<25 or req.target_duration_minutes>35:raise HTTPException(422,"Interview duration must be between 25 and 35 minutes")
-    metadata=await course_metadata(req.course_id);title=str(metadata.get("title") or f"Course {req.course_id}")
+    metadata=await _interview_course_context(req.course_id);title=str(metadata.get("title") or f"Course {req.course_id}")
     state=start_state(req.course_id,title,req.officer_name.strip() or principal.full_name or "Officer",req.target_duration_minutes)
+    state.update(organization=metadata.get("organization") or "iGOT Karmayogi",overview=metadata.get("overview") or "",modules=metadata.get("modules") or [],material=metadata.get("material") or "")
     record=SessionRecord(user_id=principal.user_id,engine="behavioural_interview",state=state);db.add(record);db.commit()
     return {"session_id":record.id,"course_id":req.course_id,"course_title":title,"officer_name":state["officer_name"],"target_duration_minutes":req.target_duration_minutes,"initial_ai_question":state["transcript"][0]["content"],"current_phase":PHASES[0][0],"primary_competency":PHASES[0][1]}
 
 @app.post("/v1/behavioural/interview/turn")
-def interview_turn(req:InterviewTurn,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+async def interview_turn(req:InterviewTurn,principal:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
     record=_interview_record(req.session_id,principal,db)
     if record.status!="active":raise HTTPException(409,"Interview session is already complete")
     metrics=req.model_dump(exclude={"session_id","officer_response","elapsed_seconds"})
-    try:state,response=submit_turn(dict(record.state),req.officer_response,req.elapsed_seconds,metrics)
+    messages,schema=turn_ai_request(dict(record.state),req.officer_response);ai_result,provider=await _interview_ai(messages,schema,authorization)
+    if not isinstance(ai_result,dict) or not str(ai_result.get("reply") or "").strip():ai_result,provider=None,None
+    try:state,response=submit_turn(dict(record.state),req.officer_response,req.elapsed_seconds,metrics,ai_result,provider)
     except ValueError as exc:raise HTTPException(409,str(exc))
     record.state=state;db.commit();return response
 
-def _finish_interview(session_id:str,principal:Principal,db:Session)->dict:
+async def _finish_interview(session_id:str,principal:Principal,db:Session,authorization:str|None)->dict:
     record=_interview_record(session_id,principal,db);state=dict(record.state)
     if state.get("final_report"):return state["final_report"]
-    report=build_report(record.id,state);state["final_report"]=report;record.state=state;record.status="completed";db.commit();return report
+    messages,schema=report_ai_request(state);ai_result,provider=await _interview_ai(messages,schema,authorization)
+    if not isinstance(ai_result,dict) or not isinstance(ai_result.get("competency_scores"),dict):ai_result,provider=None,None
+    report=build_report(record.id,state,ai_result,provider);state["final_report"]=report;record.state=state;record.status="completed";db.commit();return report
 
 @app.post("/v1/behavioural/interview/end")
-def end_interview_by_body(req:InterviewEnd,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
-    return _finish_interview(req.session_id,principal,db)
+async def end_interview_by_body(req:InterviewEnd,principal:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    return await _finish_interview(req.session_id,principal,db,authorization)
 
 @app.post("/v1/behavioural/interview/{session_id}/end")
-def end_interview(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
-    return _finish_interview(session_id,principal,db)
+async def end_interview(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    return await _finish_interview(session_id,principal,db,authorization)
 @app.post("/v1/assessments",status_code=201)
 def create_assessment(req:AssessmentCreate,_:Principal=Depends(require_admin),db:Session=Depends(get_db)):
     obj=Assessment(id=req.id,course_id=req.course_id,title=req.title,description=req.description,engine=req.engine,time_limit_minutes=req.time_limit_minutes,pass_threshold_percent=req.pass_threshold_percent); obj.questions=[Question(**q.model_dump()) for q in req.questions]; db.add(obj); db.commit(); db.refresh(obj); return {"id":obj.id}

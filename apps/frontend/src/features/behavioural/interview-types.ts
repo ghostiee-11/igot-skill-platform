@@ -30,6 +30,7 @@ export interface InterviewTurnResponse {
   acknowledgement_note?: string | null;
   detected_competencies: string[];
   delivery_feedback?: string | null;
+  ai_provider?: string;
 }
 
 export interface CompetencyScore {

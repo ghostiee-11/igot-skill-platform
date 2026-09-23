@@ -1,6 +1,6 @@
 # Service migration status
 
-Last updated: 2026-09-18. Branch: `rebuild/service-architecture`.
+Last updated: 2026-09-23. Branch: `rebuild/service-architecture`.
 
 ## Verified baseline
 
@@ -12,7 +12,7 @@ Last updated: 2026-09-18. Branch: `rebuild/service-architecture`.
 ## Integration checks performed during implementation
 
 - All Python applications have committed `uv.lock` files. Their Dockerfiles install with `uv sync --frozen` and all eight application images build successfully.
-- Service and migration suites: **59 passed** (gateway 32, identity 2, learning 2, assessment 7, competency 2, AI 3, content 4, labs 2, legacy migration 5). The only reported warnings are upstream Starlette/httpx deprecations.
+- Service and migration suites: **59 passed** (gateway 32, identity 2, learning 2, assessment 7, competency 2, AI 3, content 4, labs 2, legacy migration 5). Behavioural interview coverage includes mocked adaptive turns, reports, restart persistence and speech upload. A live gateway check also returned a Groq follow-up and a Groq-scored report. The only reported warnings are upstream Starlette/httpx deprecations.
 - Frontend: `npx tsc --noEmit` passed. A clean Docker production build compiled all 30 routes, completed TypeScript checking and generated every static page. The host-only build remains susceptible to a Windows lock on `.next/trace`; `.next` is excluded from Docker context.
 - `docker compose --env-file .env -f infra/compose/docker-compose.yml config --quiet` passed. PostgreSQL, RabbitMQ, identity, learning, assessment, competency, AI, content, labs and gateway were started locally; every health endpoint responded and labs readiness confirmed database plus Docker access.
 - Alembic ran at container startup using schema-scoped service roles. Schemas are provisioned by the database bootstrap, while migrations create only owned tables and their schema-local version tables.
@@ -24,6 +24,7 @@ Last updated: 2026-09-18. Branch: `rebuild/service-architecture`.
 ## Remaining work before cutover
 
 - Complete legacy compatibility for adaptive statistical mastery, generated technical labs and digital-governance session workflows. Behavioural course, corpus, case, carryforward-session and restart-safe live-interview routes are now implemented; speech transcription still requires an external provider configuration.
+- Migrate the legacy lesson records into the active learning database for full course-material grounding. In the current local database, behavioural course 1 has an overview but no module or lesson rows; its live interview uses that overview until lessons are imported.
 - Extend reconciliation beyond counts: verify ID sets, password hashes, JSON payloads and timestamps, then rehearse rollback/restore from a database snapshot.
 - Exercise the complete browser learner journey through the gateway, including registration, enrolment, course completion, assessment evidence, quiz generation and lab ingress/WebSocket proxying.
 - Add durable outbox publishers/consumers and recovery tests; persisting outbox records alone does not deliver events.

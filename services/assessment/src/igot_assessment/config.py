@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     learning_url: str = "http://learning:8102"
     competency_url: str = "http://competency:8104"
+    ai_service_url: str = "http://ai:8105"
+    internal_event_secret: str = ""
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672//"
     sarvam_api_key: str = ""
     auto_create_schema: bool = False

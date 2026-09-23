@@ -50,6 +50,18 @@ def courses(limit:int=Query(50,ge=1,le=200),db:Session=Depends(get_db)):
 def load_course(db,id):
     return db.scalar(select(Course).options(selectinload(Course.modules).selectinload(Module.lessons),selectinload(Course.course_skills).selectinload(CourseSkill.skill)).where(Course.id==id))
 
+@router.get("/internal/courses/{course_id}/interview-context",dependencies=[Depends(internal_secret)])
+def interview_course_context(course_id:int,db:Session=Depends(get_db)):
+    course=load_course(db,course_id)
+    if not course:raise HTTPException(404,"Course not found")
+    parts=[]
+    for module in course.modules:
+        parts.append(f"## {module.title}")
+        if module.description:parts.append(module.description)
+        for lesson in module.lessons:
+            parts.append(f"### {lesson.title}\n{lesson.content or ''}")
+    return {"title":course.title,"organization":course.organization or "iGOT Karmayogi","overview":course.overview or "","modules":[module.title for module in course.modules],"material":"\n".join(parts)[:5000]}
+
 @router.get("/courses/{course_id}")
 def course_detail(course_id:int,p:Principal|None=Depends(optional_principal),db:Session=Depends(get_db)):
     c=load_course(db,course_id)

@@ -44,6 +44,7 @@ interface ChatMessage {
   text: string;
   tags?: string[];
   note?: string | null;
+  source?: string;
 }
 
 function errorMessage(err: unknown, fallback: string) {
@@ -267,7 +268,7 @@ export default function LiveInterviewPage() {
         const next = [...current];
         const last = next[next.length - 1];
         next[next.length - 1] = { ...last, tags: res.detected_competencies, note: res.acknowledgement_note };
-        return [...next, { role: "board", text: res.ai_question }];
+        return [...next, { role: "board", text: res.ai_question, source: res.ai_provider }];
       });
       setPhaseName(res.phase_name);
       void speak(res.ai_question);
@@ -646,7 +647,9 @@ export default function LiveInterviewPage() {
                           <Brain className="size-4" aria-hidden="true" />
                         </div>
                         <div className="max-w-[85%]">
-                          <p className="text-[11px] font-semibold text-slate-500">Board member</p>
+                          <p className="text-[11px] font-semibold text-slate-500">
+                            Board member{m.source === "groq" ? " · Groq AI" : m.source === "deterministic-fallback" ? " · fallback question" : ""}
+                          </p>
                           <div className="mt-1 rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3 text-sm leading-relaxed text-pretty text-slate-900">
                             {m.text}
                           </div>

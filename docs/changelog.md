@@ -1,5 +1,10 @@
 # 📜 Repository Changelog
 
+## 2026-09-23 — Behavioural interview LLM restored
+
+- Restored Groq follow-ups and transcript scoring. The former default model returned `model_not_found`; `openai/gpt-oss-120b` was verified with the configured key. Assessment still owns durable sessions and records the provider used for each turn.
+- Restored the original competency names expected by the report UI and added a protected learning-service route for course overview and lesson content. Full lesson grounding requires those records to be migrated into the active learning database.
+
 ## 2026-09-18 — Obsolete repository material removed
 
 - Removed the superseded root `ai-service/` placeholder; the active implementation is `services/ai/`.
