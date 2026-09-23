@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Last updated: 2026-09-18. See [migration status](migration/status.md) for current verification.
+Last updated: 2026-09-23. See [migration status](migration/status.md) and the [runtime parity audit](migration/runtime-parity-audit-2026-09-23.md) for current verification.
 
 ## Inherited application debt
 

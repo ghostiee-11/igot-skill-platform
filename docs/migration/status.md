@@ -23,6 +23,8 @@ Last updated: 2026-09-23. Branch: `rebuild/service-architecture`.
 
 ## Remaining work before cutover
 
+The [2026-09-23 runtime parity audit](runtime-parity-audit-2026-09-23.md) records live API failures and legacy/current data counts for the blocked learner journeys.
+
 - Complete legacy compatibility for adaptive statistical mastery, generated technical labs and digital-governance session workflows. Behavioural course, corpus, case, carryforward-session and restart-safe live-interview routes are now implemented; speech transcription still requires an external provider configuration.
 - Migrate the legacy lesson records into the active learning database for full course-material grounding. In the current local database, behavioural course 1 has an overview but no module or lesson rows; its live interview uses that overview until lessons are imported.
 - Extend reconciliation beyond counts: verify ID sets, password hashes, JSON payloads and timestamps, then rehearse rollback/restore from a database snapshot.
