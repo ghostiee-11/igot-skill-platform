@@ -20,6 +20,7 @@ Last updated: 2026-09-25. See [migration status](migration/status.md) and the [r
 - The disposable PostgreSQL apply and count reconciliation pass, but field-level hashes/timestamps and rollback restoration are not yet verified.
 - The repaired behavioural generator creates a generic branching case grounded in supplied notice text; it is not a verified statutory interpretation or LLM-authored case. Adaptive statistical practice currently draws from a finite imported question bank rather than generating unlimited variants.
 - The local labs controller mounts the Docker socket and is therefore a development boundary, not an acceptable shared production placement.
+- Cyber incident Marimo workspaces are reachable through a short-lived bearer URL on local port 8107. This preserves the workspace's internal Docker network for local testing, but the labs controller and its Docker-socket mount must be replaced or hardened before shared deployment.
 
 ## Deferred
 

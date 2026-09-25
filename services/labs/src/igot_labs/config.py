@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     docker_base_url:str="unix:///var/run/docker.sock";workspace_image:str="igot/lab-workspace:local";allowed_target_images:str="igot/target-demo:local";public_base_url:str="http://localhost:8000";default_ttl_minutes:int=45;auto_create_schema:bool=False
     controller_container_name:str="labs";execution_timeout_seconds:int=15;max_output_bytes:int=262144
     internal_event_secret:str=""
+    assessment_service_url:str="http://assessment:8103"
+    console_public_base_url:str="http://localhost:8107"
     @property
     def target_allowlist(self):return {v.strip() for v in self.allowed_target_images.split(",") if v.strip()}
 @lru_cache

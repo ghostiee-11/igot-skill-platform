@@ -183,6 +183,7 @@ services:
       DEFAULT_TTL_MINUTES: ${LAB_DEFAULT_TTL_MINUTES:-60}
       PUBLIC_BASE_URL: http://localhost:8000
       CONTROLLER_CONTAINER_NAME: igot-labs-controller
+      ASSESSMENT_SERVICE_URL: http://assessment:8103
     volumes:
       - ../storage/artifacts:/var/lib/igot/artifacts
       - /var/run/docker.sock:/var/run/docker.sock

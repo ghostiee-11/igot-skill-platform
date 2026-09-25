@@ -2,7 +2,9 @@
 
 Last updated: 2026-09-25. Branch: `rebuild/service-architecture`.
 
-The 2026-09-23 baseline below is historical. The [runtime parity audit](runtime-parity-audit-2026-09-23.md#repair-follow-up-2026-09-25) tracks the later local curriculum import and repaired scenario, lab, quiz, adaptive and behavioural-case contracts. The new adaptive/case changes pass service tests and Alembic SQL generation, but have not been redeployed through Compose because Docker Desktop is unavailable on this machine.
+The 2026-09-23 baseline below is historical. The [runtime parity audit](runtime-parity-audit-2026-09-23.md#repair-follow-up-2026-09-25) tracks the later local curriculum import and repaired scenario, lab, quiz, adaptive and behavioural-case contracts. These changes now pass service tests and have been deployed through the local Compose stack.
+
+Local follow-up: Docker was started and the current stack rebuilt. The statistical exam's empty-chart payload crash is fixed and verified in both question modes in the browser. The Digital Governance incident launcher now obtains the authored challenge from assessment, starts its isolated Marimo notebook through labs, and serves it via a token-scoped HTTP/WebSocket proxy; Incident Module 1 and its notebook content were verified in the browser. This remains a local-development runtime, not production sandbox authorization.
 
 ## Verified baseline
 

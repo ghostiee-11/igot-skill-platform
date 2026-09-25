@@ -57,6 +57,8 @@ def test_api_v1_alias_is_normalized_without_a_second_route_registration() -> Non
         ("POST", "technical-courses/labs/l1/assistant", "assessment", "/v1/technical-courses/labs/l1/assistant"),
         ("POST", "technical-courses/sandbox/execute-code", "labs", "/v1/technical-courses/sandbox/execute-code"),
         ("POST", "digital-governance/scenarios/session/s1/answer", "assessment", "/v1/digital-governance/scenarios/session/s1/answer"),
+        ("GET", "digital-governance/sandbox/competencies", "labs", "/v1/digital-governance/sandbox/competencies"),
+        ("POST", "digital-governance/sandbox/session/start", "labs", "/v1/digital-governance/sandbox/session/start"),
         ("POST", "digital-governance/sandbox/session/s1/stop", "labs", "/v1/digital-governance/sandbox/session/s1/stop"),
         ("POST", "agents/chat", "ai", "/v1/agents/chat"),
     ],

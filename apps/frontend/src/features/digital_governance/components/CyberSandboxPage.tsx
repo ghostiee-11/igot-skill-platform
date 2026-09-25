@@ -35,6 +35,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { fetchApi } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -268,13 +269,7 @@ export default function CyberSandboxPage() {
 
   const fetchCompetencies = async () => {
     try {
-      const res = await fetch(
-        `${API_BASE}/digital-governance/sandbox/competencies`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setCompetencies(data);
-      }
+      setCompetencies(await fetchApi<CompetencyRadar>("/digital-governance/sandbox/competencies"));
     } catch (e) {
       // ignore
     }
@@ -307,28 +302,15 @@ export default function CyberSandboxPage() {
     setFlagMessage(null);
     setFlagInput("");
     try {
-      const res = await fetch(
-        `${API_BASE}/digital-governance/sandbox/session/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ challenge_id: chalId, duration_minutes: 45 }),
-        },
-      );
-      if (res.ok) {
-        const sess: ActiveSessionData = await res.json();
-        setActiveSession(sess);
-        setRemainingSecs(sess.remaining_seconds || 2700);
-      } else {
-        // A simulated session pointed the console at a port nothing listens on; tell the learner instead.
-        const body = await res.json().catch(() => null);
-        setStartError(
-          (body?.detail || "The analyst console could not be started.").replace(/^Failed to start sandbox session:\s*/, ""),
-        );
-      }
+      const sess = await fetchApi<ActiveSessionData>("/digital-governance/sandbox/session/start", {
+        method: "POST",
+        body: JSON.stringify({ challenge_id: chalId, duration_minutes: 45 }),
+      });
+      setActiveSession(sess);
+      setRemainingSecs(sess.remaining_seconds || 2700);
     } catch (e) {
       console.error("Start session error:", e);
-      setStartError("Could not reach the sandbox service. Check that the backend is running and try again.");
+      setStartError(e instanceof Error ? e.message : "The analyst console could not be started.");
     } finally {
       setStartingSession(false);
     }
@@ -338,12 +320,7 @@ export default function CyberSandboxPage() {
   const handleStopSession = async () => {
     if (!activeSession) return;
     try {
-      await fetch(
-        `${API_BASE}/digital-governance/sandbox/session/${activeSession.session_id}/stop`,
-        {
-          method: "POST",
-        },
-      );
+      await fetchApi(`/digital-governance/sandbox/session/${activeSession.session_id}/stop`, { method: "POST" });
     } catch (e) {
       // ignore
     }
@@ -359,60 +336,19 @@ export default function CyberSandboxPage() {
     setFlagMessage(null);
 
     try {
-      const res = await fetch(
-        `${API_BASE}/digital-governance/sandbox/session/submit-flag`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session_id: activeSession.session_id,
-            challenge_id: activeSession.challenge_id,
-            flag: flagInput.trim(),
-          }),
-        },
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        setFlagMessage({ text: data.message, success: data.correct });
-        if (data.correct) {
-          setActiveSession({ ...activeSession, solved: true });
-          fetchCompetencies();
-          fetchChallenges();
-        }
-      } else {
-        // Fallback flag check
-        if (flagInput.toLowerCase().includes("flag{")) {
-          setFlagMessage({
-            text: "FLAG ACCEPTED! Threat successfully mitigated and points awarded.",
-            success: true,
-          });
-          setActiveSession({ ...activeSession, solved: true });
-          setCompetencies((prev) => ({
-            ...prev,
-            total_score: prev.total_score + activeSession.points,
-            solved_challenges_count: prev.solved_challenges_count + 1,
-            soc_investigation:
-              prev.soc_investigation +
-              (activeSession.category.includes("SOC")
-                ? activeSession.points
-                : 0),
-            phishing_analysis:
-              prev.phishing_analysis +
-              (activeSession.category.includes("Phishing")
-                ? activeSession.points
-                : 0),
-          }));
-        } else {
-          setFlagMessage({
-            text: "INCORRECT FLAG. Ensure flag begins with 'FLAG{' and check telemetry logs.",
-            success: false,
-          });
-        }
+      const data = await fetchApi<{message:string;correct:boolean}>("/digital-governance/sandbox/session/submit-flag", {
+        method: "POST",
+        body: JSON.stringify({ session_id: activeSession.session_id, challenge_id: activeSession.challenge_id, flag: flagInput.trim() }),
+      });
+      setFlagMessage({ text: data.message, success: data.correct });
+      if (data.correct) {
+        setActiveSession({ ...activeSession, solved: true });
+        fetchCompetencies();
+        setChallenges((items) => items.map((item) => item.id === activeSession.challenge_id ? { ...item, solved: true } : item));
       }
     } catch (e) {
       setFlagMessage({
-        text: "Error submitting flag. Please try again.",
+        text: e instanceof Error ? e.message : "Error submitting flag. Please try again.",
         success: false,
       });
     } finally {
@@ -453,72 +389,21 @@ export default function CyberSandboxPage() {
     if (!activeSession) return;
     setUnlockingHintId(hintId);
     try {
-      const res = await fetch(
-        `${API_BASE}/digital-governance/sandbox/session/unlock-hint`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session_id: activeSession.session_id,
-            challenge_id: activeSession.challenge_id,
-            hint_id: hintId,
-          }),
-        },
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        if (
-          data.content &&
-          data.content !== "Session not found." &&
-          data.content !== "Hint ID not found for this challenge."
-        ) {
-          setActiveSession({
-            ...activeSession,
-            points:
-              data.remaining_points !== undefined
-                ? data.remaining_points
-                : activeSession.points,
-            hints: activeSession.hints.map((h) =>
-              h.id === hintId
-                ? { ...h, unlocked: true, content: data.content }
-                : h,
-            ),
-          });
-          return;
-        }
-      }
-
-      // Local simulation / fallback hint content
-      const fallbackContent =
-        CHALLENGE_HINTS_CATALOG[activeSession.challenge_id]?.[hintId] ||
-        (hintId === 1
-          ? "Inspect evidence telemetry and log sequences to locate anomalous events and identify the threat actor."
-          : "Correlate off-hours network connections with privilege escalation activity to isolate the flag.");
-
+      const data = await fetchApi<{content:string;remaining_points:number}>("/digital-governance/sandbox/session/unlock-hint", {
+        method: "POST",
+        body: JSON.stringify({ session_id: activeSession.session_id, challenge_id: activeSession.challenge_id, hint_id: hintId }),
+      });
       setActiveSession({
         ...activeSession,
-        points: Math.max(10, activeSession.points - 15),
+        points: data.remaining_points,
         hints: activeSession.hints.map((h) =>
           h.id === hintId
-            ? { ...h, unlocked: true, content: fallbackContent }
+            ? { ...h, unlocked: true, content: data.content }
             : h,
         ),
       });
     } catch (e) {
-      console.error(e);
-      const fallbackContent =
-        CHALLENGE_HINTS_CATALOG[activeSession.challenge_id]?.[hintId] ||
-        "Inspect telemetry logs in the notebook console to identify indicators of compromise.";
-      setActiveSession({
-        ...activeSession,
-        points: Math.max(10, activeSession.points - 15),
-        hints: activeSession.hints.map((h) =>
-          h.id === hintId
-            ? { ...h, unlocked: true, content: fallbackContent }
-            : h,
-        ),
-      });
+      setStartError(e instanceof Error ? e.message : "Could not unlock hint.");
     } finally {
       setUnlockingHintId(null);
     }
@@ -1002,12 +887,14 @@ export default function CyberSandboxPage() {
                     onClick={() =>
                       handleStartSession("01-soc-auth-investigation")
                     }
+                    disabled={startingSession}
                     className="bg-[#1E3A8A] hover:bg-blue-900 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition-all"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" />
-                    Launch Incident Module 1
+                    {startingSession ? "Starting workbench…" : "Launch Incident Module 1"}
                   </button>
                 </div>
+                {startError && <p role="alert" className="text-sm text-rose-700">{startError}</p>}
               </div>
             )}
           </div>

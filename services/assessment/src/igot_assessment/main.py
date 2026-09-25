@@ -290,6 +290,13 @@ async def technical_lab_assistant(lab_id:int,req:LabAssistantRequest,_:Principal
 def cyber_challenges(db:Session=Depends(get_db)):
     return [{"id":item.id,"title":item.title,"category":item.category,"difficulty":item.difficulty,"points":item.points,"duration_minutes":item.duration_minutes,"is_flagship":item.is_flagship,"solved":False,"competency_id":item.competency_id,"tags":item.tags,"mitre_techniques":item.mitre_techniques,"objectives":item.objectives} for item in db.scalars(select(CyberSandboxChallenge).order_by(CyberSandboxChallenge.title)).all()]
 
+@app.get("/v1/internal/cyber-challenges/{challenge_id}")
+def internal_cyber_challenge(challenge_id:str,x_internal_secret:str|None=Header(None),db:Session=Depends(get_db)):
+    if not get_settings().internal_event_secret or x_internal_secret!=get_settings().internal_event_secret:raise HTTPException(401,"Invalid internal service credential")
+    challenge=db.get(CyberSandboxChallenge,challenge_id)
+    if not challenge:raise HTTPException(404,"Challenge not found")
+    return {"id":challenge.id,"title":challenge.title,"category":challenge.category,"difficulty":challenge.difficulty,"points":challenge.points,"duration_minutes":challenge.duration_minutes,"competency_id":challenge.competency_id,"objectives":challenge.objectives,"scenario_md":challenge.scenario_markdown,"hints":challenge.hints,"artifacts":challenge.artifacts,"notebook_code":challenge.notebook_code,"flag":challenge.flag}
+
 @app.get("/v1/digital-governance/scenarios")
 def digital_scenarios():return scenario_summaries()
 

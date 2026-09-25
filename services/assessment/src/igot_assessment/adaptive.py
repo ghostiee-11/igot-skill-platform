@@ -22,7 +22,8 @@ def public_question(question: StatEngineQuestion) -> dict:
             "competency_id": question.competency_id, "type": question.question_type,
             "difficulty": question.difficulty, "prompt": question.prompt, "data": data,
             "options": [{"id": key, "text": str(value[0] if isinstance(value, list) else value)} for key, value in (question.options_map or {}).items()] or None,
-            "chart": question.chart, "metadata": {"unit": question.unit} if question.unit else {}}
+            "chart": question.chart if isinstance(question.chart, dict) and question.chart.get("data") else None,
+            "metadata": {"unit": question.unit} if question.unit else {}}
 
 
 def next_question(db: Session, user_id: int, competency_id: str, preferred_skill_id: str | None = None,

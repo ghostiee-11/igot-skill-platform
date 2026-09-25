@@ -72,11 +72,12 @@ def test_adaptive_question_is_private_and_mastery_is_persistent(monkeypatch):
         competency_id="price_statistics", question_type="mcq", difficulty="basic", prompt="Choose the index",
         parameters={"base": 10, "answer": 120}, correct_answer=120, tolerance=None,
         options_map={"A": [90, "inverted"], "B": [120, None]}, correct_option_id="B",
-        explanation="Current over base.", unit=None, chart=None, seed=1))
+        explanation="Current over base.", unit=None, chart={}, seed=1))
     session.commit()
     question = client.post("/v1/questions/next", json={"user_id": "somebody-else", "competency_id": "price_statistics"})
     assert question.status_code == 200
     assert question.json()["data"] == {"base": 10}
+    assert question.json()["chart"] is None
     assert "correct_answer" not in str(question.json())
     result = client.post("/v1/questions/submit", json={"user_id": "somebody-else", "question_id": "item-1", "submitted_answer": "B"})
     assert result.status_code == 200
