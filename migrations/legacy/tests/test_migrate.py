@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 
-from migrate import DESTINATIONS, _attempt, _json_fields, _question, inventory, reconcile_counts
+from migrate import DESTINATIONS, Destination, _attempt, _json_fields, _question, apply, inventory, reconcile_counts
 
 
 def test_inventory_reports_mapped_archive_and_unmapped_tables():
@@ -66,6 +66,35 @@ def test_count_reconciliation_reports_mismatch():
         DESTINATIONS["users"] = (Destination(None, "users"),)
         result = reconcile_counts(source, target)
         assert result["users->None.users"] == {"expected": 1, "actual": 0, "matches": False}
+    finally:
+        DESTINATIONS.clear()
+        DESTINATIONS.update(original)
+
+
+def test_subset_apply_imports_only_requested_table():
+    source = create_engine("sqlite://")
+    target = create_engine("sqlite://")
+    for engine in (source, target):
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE modules(id integer primary key, title text)"))
+            connection.execute(text("CREATE TABLE lessons(id integer primary key, title text)"))
+    with source.begin() as connection:
+        connection.execute(text("INSERT INTO modules VALUES (1, 'Original module')"))
+        connection.execute(text("INSERT INTO lessons VALUES (1, 'Original lesson')"))
+    original = dict(DESTINATIONS)
+    try:
+        DESTINATIONS.clear()
+        DESTINATIONS.update({
+            "modules": (Destination(None, "modules"),),
+            "lessons": (Destination(None, "lessons"),),
+        })
+        report = apply(source, target, {"modules"})
+        assert report["inserted"]["None.modules"] == 1
+        assert report["archived"] == {}
+        with target.connect() as connection:
+            assert connection.execute(text("SELECT count(*) FROM modules")).scalar_one() == 1
+            assert connection.execute(text("SELECT count(*) FROM lessons")).scalar_one() == 0
+        assert list(reconcile_counts(source, target, {"modules"})) == ["modules->None.modules"]
     finally:
         DESTINATIONS.clear()
         DESTINATIONS.update(original)

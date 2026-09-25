@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from igot_labs import main
 from igot_labs.database import Base, get_db
-from igot_labs.security import Principal, principal
+from igot_labs.security import Principal, internal, principal
 
 
 @dataclass
@@ -58,6 +58,7 @@ def _client(monkeypatch) -> tuple[TestClient, Session]:
     monkeypatch.setattr(main, "DockerRuntime", FakeRuntime)
     main.app.dependency_overrides[get_db] = test_db
     main.app.dependency_overrides[principal] = lambda: Principal(7, "learner")
+    main.app.dependency_overrides[internal] = lambda: None
     return TestClient(main.app), session
 
 
@@ -99,6 +100,23 @@ def test_target_images_are_not_accepted_from_outside_allowlist(monkeypatch):
             "/v1/sessions", json={"lab_id": "lab-1", "target_images": ["unknown/image:latest"]}
         )
         assert response.status_code == 503
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_ephemeral_code_and_notebook_export(monkeypatch):
+    client, session = _client(monkeypatch)
+    FakeRuntime.terminated.clear()
+    try:
+        cell=client.post("/v1/technical-courses/sandbox/execute-code",json={"code":"print('ok')"})
+        assert cell.status_code==200 and cell.json()["success"] is True
+        graded=client.post("/v1/code/grade",json={"code":"def solve(): return 1","tests":[{"name":"works","test_code":"assert solve() == 1"}]})
+        assert graded.status_code==200 and graded.json()["all_passed"] is True
+        assert len(FakeRuntime.terminated)==2
+        exported=client.post("/v1/technical-courses/notebook/export",json={"title":"Example Lab","cells":[{"type":"code","content":"print(1)"}]})
+        assert exported.status_code==200
+        assert exported.json()["filename"]=="example_lab.ipynb"
     finally:
         main.app.dependency_overrides.clear()
         session.close()

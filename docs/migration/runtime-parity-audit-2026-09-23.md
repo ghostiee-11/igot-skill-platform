@@ -30,3 +30,11 @@ Scope: the current Compose stack, the copied frontend's API calls, gateway mappi
 4. Add gateway-through-browser smoke checks for each repaired learner journey. A route resolving in the gateway is not proof that the destination exists or that its response matches the frontend.
 
 This audit does not claim that every frontend workflow was exercised; it identifies the highest-impact discrepancies found in the first API and data parity sweep.
+
+## Repair follow-up (2026-09-25)
+
+The table above is the original finding record, not the current unresolved-issues list. The local PostgreSQL database was backed up to ignored `infra/storage/backups/igot-before-parity-20260923.dump` before a targeted import of 11 modules, 14 lessons, 3 assessments and 21 questions. The imported counts reconciled with the legacy SQLite source. Course player, exam and interview course context were verified through the gateway after import. This is a local-development repair, not a production cutover.
+
+The scenario catalogue and durable branching sessions, six authored technical lab cards with isolated grading and notebook execution, and quiz creation from paste/upload were restored and verified through the local gateway. The assessment service now handles adaptive statistical next/submit requests against the imported item bank, persists learner mastery/attempts, and withholds answer parameters until submission. Generated behavioural cases are stored in PostgreSQL, incorporate the submitted notice, and are snapshotted into sessions so restarts do not strand an active session. Regression tests cover these contracts; a fresh Compose deployment of the latter two changes is pending while Docker Desktop is unavailable.
+
+Limits: behavioural notice generation currently uses a generic, notice-grounded decision tree, not an LLM-authored legal interpretation. It does not verify statutory correctness of user-supplied text. Adaptive selection uses the imported finite item bank; it does not synthesize unlimited new questions. These need explicit product decisions before claiming full legacy feature parity.

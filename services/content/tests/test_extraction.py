@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from igot_content import main, tasks
 from igot_content.database import Base, Job, get_db
-from igot_content.extraction import ExtractionError, discovery_links, extract_web_text, normalize_text
+from igot_content.extraction import ExtractionError, discovery_links, extract_document, extract_web_text, normalize_text
 
 
 def test_normalize_and_discovery():
@@ -19,6 +19,13 @@ def test_normalize_and_discovery():
 def test_private_web_sources_are_rejected():
     with pytest.raises(ExtractionError, match="private or reserved"):
         asyncio.run(extract_web_text("http://127.0.0.1/private"))
+
+
+def test_uploaded_text_and_transcript_extraction():
+    assert extract_document("notes.txt",b"Official statistics source text") == "Official statistics source text"
+    assert extract_document("lecture.vtt",b"WEBVTT\n00:00:00.000 --> 00:00:03.000\nLearn survey methods.") == "Learn survey methods."
+    with pytest.raises(ExtractionError):
+        extract_document("program.exe",b"not a document")
 
 
 def _client() -> tuple[TestClient, Session]:

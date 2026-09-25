@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from fastapi import Depends,HTTPException
+from fastapi import Depends,Header,HTTPException
 from fastapi.security import HTTPAuthorizationCredentials,HTTPBearer
 from jose import JWTError,jwt
 from .config import get_settings
@@ -13,3 +13,7 @@ def principal(credentials:HTTPAuthorizationCredentials|None=Depends(bearer)):
     try:
         claims=jwt.decode(credentials.credentials,cfg.jwt_secret,algorithms=[cfg.jwt_algorithm]);return Principal(int(claims["sub"]),str(claims.get("role","learner")))
     except (JWTError,KeyError,ValueError,TypeError):raise HTTPException(401,"Invalid authentication token")
+
+def internal(x_internal_secret:str|None=Header(None)):
+    secret=get_settings().internal_event_secret
+    if not secret or x_internal_secret!=secret:raise HTTPException(401,"Invalid internal service credential")

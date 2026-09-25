@@ -240,22 +240,25 @@ def _prepare_archive(target) -> None:
     """))
 
 
-def apply(source_engine, target_engine) -> dict[str, Any]:
+def apply(source_engine, target_engine, only_tables: set[str] | None = None) -> dict[str, Any]:
     source_inspector = inspect(source_engine)
     report = {"inserted": {}, "archived": {}, "skipped_existing": {}, "failed": {}, "errors": {}, "sequences": {}}
     source_metadata = MetaData()
     target_metadata = MetaData()
     with source_engine.connect() as source, target_engine.begin() as target:
-        _prepare_archive(target)
+        if only_tables is None:
+            _prepare_archive(target)
         available_target = set(inspect(target).get_schema_names())
         source_tables = source_inspector.get_table_names()
         rank = {name: index for index, name in enumerate(TABLE_ORDER)}
         for table_name in sorted(source_tables, key=lambda name: (rank.get(name, len(rank)), name)):
+            if only_tables is not None and table_name not in only_tables:
+                continue
             source_table = Table(table_name, source_metadata, autoload_with=source_engine)
             rows = [dict(row) for row in source.execute(select(source_table)).mappings()]
             destinations = DESTINATIONS.get(table_name, ())
             for destination in destinations:
-                if destination.schema not in available_target:
+                if destination.schema is not None and destination.schema not in available_target:
                     raise RuntimeError(f"target schema missing: {destination.schema}")
                 target_table = Table(destination.table, target_metadata, schema=destination.schema, autoload_with=target)
                 allowed = set(target_table.c.keys())
@@ -283,7 +286,7 @@ def apply(source_engine, target_engine) -> dict[str, Any]:
                 report["skipped_existing"][key] = report["skipped_existing"].get(key, 0) + skipped
                 report["failed"][key] = report["failed"].get(key, 0) + failed
 
-            if table_name in ARCHIVE_TABLES or not destinations:
+            if only_tables is None and (table_name in ARCHIVE_TABLES or not destinations):
                 archived = 0
                 for row in rows:
                     source_key = _primary_key(source_inspector, table_name, row)
@@ -300,7 +303,9 @@ def apply(source_engine, target_engine) -> dict[str, Any]:
                 report["archived"][table_name] = archived
         if target_engine.dialect.name == "postgresql":
             seen: set[tuple[str, str]] = set()
-            for destinations in DESTINATIONS.values():
+            for source_name, destinations in DESTINATIONS.items():
+                if only_tables is not None and source_name not in only_tables:
+                    continue
                 for destination in destinations:
                     key = (destination.schema, destination.table)
                     if key in seen:
@@ -326,13 +331,15 @@ def apply(source_engine, target_engine) -> dict[str, Any]:
     return report
 
 
-def reconcile_counts(source_engine, target_engine) -> dict[str, dict[str, Any]]:
+def reconcile_counts(source_engine, target_engine, only_tables: set[str] | None = None) -> dict[str, dict[str, Any]]:
     """Compare every mapped source count with each typed destination count."""
     report: dict[str, dict[str, Any]] = {}
     source_metadata = MetaData()
     target_metadata = MetaData()
     with source_engine.connect() as source, target_engine.connect() as target:
         for source_name, destinations in DESTINATIONS.items():
+            if only_tables is not None and source_name not in only_tables:
+                continue
             source_table = Table(source_name, source_metadata, autoload_with=source)
             expected = source.execute(select(text("count(*)")).select_from(source_table)).scalar_one()
             for destination in destinations:
@@ -349,20 +356,28 @@ def main() -> int:
     parser.add_argument("--source-url", required=True)
     parser.add_argument("--target-url")
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--only-tables", nargs="+", metavar="TABLE", help="Import only named mapped source tables; existing rows are not overwritten")
     args = parser.parse_args()
     if args.apply and not args.target_url:
         parser.error("--target-url is required with --apply")
+    only_tables = set(args.only_tables) if args.only_tables else None
+    if only_tables:
+        unknown = only_tables - DESTINATIONS.keys()
+        if unknown:
+            parser.error(f"--only-tables contains unmapped tables: {', '.join(sorted(unknown))}")
     source_engine = create_engine(args.source_url)
     result = inventory(source_engine)
+    if only_tables is not None:
+        result = {name: item for name, item in result.items() if name in only_tables}
     print(json.dumps({"mode": "apply" if args.apply else "dry-run", "inventory": result}, indent=2))
     blockers = [name for name, item in result.items() if item["state"] in {"unmapped", "archive_pending_typed_migration"} and item["rows"]]
     if args.apply:
         target_engine = create_engine(args.target_url)
-        migration_report = apply(source_engine, target_engine)
+        migration_report = apply(source_engine, target_engine, only_tables)
         print(json.dumps({"migration": migration_report}, indent=2))
         if any(migration_report["failed"].values()):
             return 3
-        reconciliation = reconcile_counts(source_engine, target_engine)
+        reconciliation = reconcile_counts(source_engine, target_engine, only_tables)
         print(json.dumps({"reconciliation": reconciliation}, indent=2))
         if not all(item["matches"] for item in reconciliation.values()):
             return 4

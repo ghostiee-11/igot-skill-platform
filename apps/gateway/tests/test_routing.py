@@ -9,10 +9,10 @@ def test_routes_identity_compatibility_path() -> None:
     assert (target.service, target.path) == ("identity", "/v1/auth/login")
 
 
-def test_longest_prefix_routes_lab_execution_to_labs() -> None:
+def test_lab_grading_routes_to_assessment_owner() -> None:
     target = resolve_legacy_path("technical-courses/labs/lab-1/execute", "POST")
     assert target is not None
-    assert target.service == "labs"
+    assert target.service == "assessment"
 
 
 def test_assessment_family_stays_with_assessment() -> None:

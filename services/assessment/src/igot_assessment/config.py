@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     learning_url: str = "http://learning:8102"
     competency_url: str = "http://competency:8104"
     ai_service_url: str = "http://ai:8105"
+    labs_service_url: str = "http://labs:8107"
+    content_service_url: str = "http://content:8106"
     internal_event_secret: str = ""
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672//"
     sarvam_api_key: str = ""

@@ -5,7 +5,7 @@ from sqlalchemy.pool import StaticPool
 from types import SimpleNamespace
 
 from igot_assessment import main
-from igot_assessment.database import Base, GeneratedQuiz, GeneratedQuizQuestion, OutboxEvent, SessionRecord, get_db
+from igot_assessment.database import Base, GeneratedBehaviouralCase, GeneratedQuiz, GeneratedQuizQuestion, OutboxEvent, SessionRecord, StatEngineMastery, StatEngineQuestion, TechnicalLabTemplate, get_db
 from igot_assessment.engines import REGISTRY, public_state
 from igot_assessment.security import Principal, current_principal, require_admin
 
@@ -64,6 +64,77 @@ def _client(monkeypatch) -> tuple[TestClient, Session]:
 
     monkeypatch.setattr(main, "course_metadata", metadata)
     return TestClient(main.app), session
+
+
+def test_adaptive_question_is_private_and_mastery_is_persistent(monkeypatch):
+    client, session = _client(monkeypatch)
+    session.add(StatEngineQuestion(question_id="item-1", template_id="template", skill_id="price.price_relative",
+        competency_id="price_statistics", question_type="mcq", difficulty="basic", prompt="Choose the index",
+        parameters={"base": 10, "answer": 120}, correct_answer=120, tolerance=None,
+        options_map={"A": [90, "inverted"], "B": [120, None]}, correct_option_id="B",
+        explanation="Current over base.", unit=None, chart=None, seed=1))
+    session.commit()
+    question = client.post("/v1/questions/next", json={"user_id": "somebody-else", "competency_id": "price_statistics"})
+    assert question.status_code == 200
+    assert question.json()["data"] == {"base": 10}
+    assert "correct_answer" not in str(question.json())
+    result = client.post("/v1/questions/submit", json={"user_id": "somebody-else", "question_id": "item-1", "submitted_answer": "B"})
+    assert result.status_code == 200
+    assert result.json()["mastery"]["score"] == 10
+    assert session.query(StatEngineMastery).one().user_id == 7
+    assert client.post("/v1/questions/submit", json={"question_id": "item-1", "submitted_answer": "B"}).json()["mastery"]["score"] == 20
+    main.app.dependency_overrides.clear()
+
+
+def test_notice_generated_case_survives_cache_reset(monkeypatch):
+    client, session = _client(monkeypatch)
+    notice = "Officers must verify the source dataset and document the authority for each statistical release before publication."
+    generated = client.post("/v1/behavioural/cases/generate", json={"raw_text": notice, "document_title": "Release Notice"})
+    assert generated.status_code == 201
+    case = generated.json()
+    assert notice in case["initial_context"]
+    assert session.get(GeneratedBehaviouralCase, case["id"])
+    started = client.post("/v1/behavioural/session/start", json={"case_id": case["id"]})
+    assert started.status_code == 201
+    session_id = started.json()["session_id"]
+    session.query(GeneratedBehaviouralCase).delete()
+    session.commit()
+    assert client.get(f"/v1/behavioural/session/{session_id}/current").status_code == 200
+    assert client.post(f"/v1/behavioural/session/{session_id}/submit", json={"question_id": case["root_question_id"], "selected_option_id": "A"}).status_code == 200
+    assert client.get(f"/v1/behavioural/session/{session_id}/summary").status_code == 200
+    main.app.dependency_overrides.clear()
+
+
+def test_course_case_uses_submitted_notice_and_is_private(monkeypatch):
+    client, session = _client(monkeypatch)
+    notice = "Verify the release register, notify the supervising officer, and preserve the signed record before publishing official figures."
+    created = client.post("/v1/behavioural/courses/42/generate-case", json={"custom_notice_text": notice})
+    assert created.status_code == 201
+    case = created.json()
+    assert case["course_id"] == 42
+    assert notice in case["initial_context"]
+    assert case["root_question_id"] != "q_ccs_root"
+    assert client.get("/v1/behavioural/courses/42/cases").json()[-1]["id"] == case["id"]
+    main.app.dependency_overrides[current_principal] = lambda: Principal(user_id=8, role="learner", full_name="Other")
+    assert client.get(f"/v1/behavioural/cases/{case['id']}").status_code == 404
+    assert client.post("/v1/behavioural/session/start", json={"case_id": case["id"]}).status_code == 404
+    main.app.dependency_overrides.clear()
+
+
+def test_adaptive_chart_shape(monkeypatch):
+    client, session = _client(monkeypatch)
+    chart = {"type": "bar", "title": "Index", "xAxis": {"field": "year", "label": "Year"},
+             "yAxis": {"field": "index", "label": "Index"}, "data": [{"year": "2025", "index": 120}]}
+    session.add(StatEngineQuestion(question_id="chart-1", template_id="chart", skill_id="price.chart",
+        competency_id="price_statistics", question_type="chart_interpretation", difficulty="basic", prompt="Read the chart",
+        parameters={"answer": "A"}, correct_answer="A", tolerance=None, options_map={"A": [120, None], "B": [100, "base"]},
+        correct_option_id="A", explanation="Read the axis.", unit=None, chart=chart, seed=1))
+    session.commit()
+    response = client.post("/v1/questions/next", json={"competency_id": "price_statistics", "question_type": "chart_interpretation"})
+    assert response.status_code == 200
+    assert response.json()["chart"] == chart
+    assert response.json()["data"] == {}
+    main.app.dependency_overrides.clear()
 
 
 def _assessment_payload() -> dict:
@@ -275,6 +346,76 @@ def test_dictation_endpoint_forwards_wav_to_speech_provider(monkeypatch):
         )
         assert response.status_code == 200
         assert response.json() == {"text": "This is my dictated answer.", "provider": "sarvam", "request_id": "speech-1"}
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_digital_scenario_branches_and_survives_session_reload(monkeypatch):
+    client, session = _client(monkeypatch)
+    try:
+        scenarios = client.get("/v1/digital-governance/scenarios")
+        assert scenarios.status_code == 200
+        assert len(scenarios.json()) == 5
+        selected = scenarios.json()[0]
+        started = client.post("/v1/digital-governance/scenarios/session/start", json={"scenario_id": selected["id"]})
+        assert started.status_code == 200
+        session_id = started.json()["session_id"]
+        question = started.json()["current_question"]
+        terminal_option = next(option for option in question["options"] if option["is_terminal"])
+        answered = client.post(
+            f"/v1/digital-governance/scenarios/session/{session_id}/answer",
+            json={"option_id": terminal_option["option_id"]},
+        )
+        assert answered.status_code == 200
+        assert answered.json()["is_terminal"] is True
+        session.expire_all()
+        summary = client.get(f"/v1/digital-governance/scenarios/session/{session_id}/summary")
+        assert summary.status_code == 200
+        assert summary.json() == answered.json()["session_summary"]
+        assert summary.json()["decision_trail"][0]["selected_option_id"] == terminal_option["option_id"]
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_authored_lab_catalogue_does_not_expose_hidden_tests_or_solution(monkeypatch):
+    client, session = _client(monkeypatch)
+    try:
+        session.add(TechnicalLabTemplate(
+            id="python-example",title="Example lab",skill="Python",language="python",difficulty="beginner",
+            instructions_template="Implement {function_name} for {objective}",
+            starter_code_template="def solve(value):\n    pass\n",solution_template="def solve(value): return value",
+            tags=["python"],constraints=[],test_cases_template=[
+                {"name":"public","test_code":"assert solve(1) == 1","is_hidden":False},
+                {"name":"private","test_code":"assert solve(2) == 2","is_hidden":True},
+            ],
+        ))
+        session.commit()
+        listing=client.get("/v1/technical-courses/labs")
+        assert listing.status_code==200 and listing.json()[0]["id"]==1001
+        detail=client.get("/v1/technical-courses/labs/1001")
+        assert detail.status_code==200
+        assert len(detail.json()["test_cases"])==1
+        assert "solution" not in detail.json()
+        assert "solve" in detail.json()["instructions"]
+    finally:
+        main.app.dependency_overrides.clear()
+        session.close()
+
+
+def test_pasted_quiz_generation_persists_questions(monkeypatch):
+    client, session = _client(monkeypatch)
+    async def generated(_source,_count,_difficulty,_authorization,_ai_url):
+        return ([{"question":"Which source is official?","options":["Published series","Rumour","Guess","Draft"],"correct_index":0,"explanation":"The published series is authoritative.","concept":"Source quality"}],"llm")
+    monkeypatch.setattr(main,"generate_questions",generated)
+    try:
+        response=client.post("/v1/quiz/generate",data={"text":"Official statistics require validated published evidence. "*6,"num_questions":"1","difficulty":"beginner"})
+        assert response.status_code==201
+        quiz_id=response.json()["id"]
+        assert response.json()["question_count"]==1
+        assert response.json()["generator"]=="llm"
+        assert client.get(f"/v1/quiz/{quiz_id}").status_code==200
     finally:
         main.app.dependency_overrides.clear()
         session.close()

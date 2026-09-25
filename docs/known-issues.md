@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Last updated: 2026-09-23. See [migration status](migration/status.md) and the [runtime parity audit](migration/runtime-parity-audit-2026-09-23.md) for current verification.
+Last updated: 2026-09-25. See [migration status](migration/status.md) and the [runtime parity audit](migration/runtime-parity-audit-2026-09-23.md) for verification and repair follow-up.
 
 ## Inherited application debt
 
@@ -18,7 +18,7 @@ Last updated: 2026-09-23. See [migration status](migration/status.md) and the [r
 - Root `.env` may target hosted resources. New checks require explicit isolated configuration.
 - Local containers are not cloud VMs. Privileged penetration-testing exercises remain deferred.
 - The disposable PostgreSQL apply and count reconciliation pass, but field-level hashes/timestamps and rollback restoration are not yet verified.
-- Specialist compatibility remains incomplete for behavioural sessions, statistical mastery, generated technical labs and digital-governance session actions.
+- The repaired behavioural generator creates a generic branching case grounded in supplied notice text; it is not a verified statutory interpretation or LLM-authored case. Adaptive statistical practice currently draws from a finite imported question bank rather than generating unlimited variants.
 - The local labs controller mounts the Docker socket and is therefore a development boundary, not an acceptable shared production placement.
 
 ## Deferred

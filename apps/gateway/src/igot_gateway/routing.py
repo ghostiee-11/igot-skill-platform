@@ -91,7 +91,7 @@ LEGACY_ROUTES: tuple[LegacyRoute, ...] = (
     _route("GET", r"technical-courses/labs/(?P<lab_id>[^/]+)", "assessment", "/v1/technical-courses/labs/{lab_id}"),
     _route("POST", r"technical-courses/labs/(?P<lab_id>[^/]+)/(?P<action>solution|validate|assistant)", "assessment", "/v1/technical-courses/labs/{lab_id}/{action}"),
     _route("POST", r"technical-courses/pipeline/run-full", "assessment", "/v1/technical-courses/pipeline/run-full"),
-    _route("POST", r"technical-courses/labs/(?P<lab_id>[^/]+)/execute", "labs", "/v1/technical-courses/labs/{lab_id}/execute"),
+    _route("POST", r"technical-courses/labs/(?P<lab_id>[^/]+)/execute", "assessment", "/v1/technical-courses/labs/{lab_id}/execute"),
     _route("POST", r"technical-courses/sandbox/execute-code", "labs", "/v1/technical-courses/sandbox/execute-code"),
     _route("POST", r"technical-courses/notebook/export", "labs", "/v1/technical-courses/notebook/export"),
     _route("GET", r"digital-governance/scenarios", "assessment", "/v1/digital-governance/scenarios"),

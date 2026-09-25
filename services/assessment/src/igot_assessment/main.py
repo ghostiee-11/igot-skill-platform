@@ -4,18 +4,23 @@ from contextlib import asynccontextmanager
 from datetime import datetime,timezone
 from uuid import uuid4
 import httpx
-from fastapi import Depends,FastAPI,File,Header,HTTPException,Query,UploadFile
+from fastapi import Depends,FastAPI,File,Form,Header,HTTPException,Query,UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func,select,text
 from sqlalchemy.orm import Session
 from .config import get_settings
 from .behavioural import CASES,DOCUMENTS,all_cases,find_case,find_document
-from .database import Assessment,Attempt,CyberSandboxChallenge,GeneratedQuiz,OutboxEvent,Question,QuizAttempt,SessionRecord,TechnicalLabTemplate,get_db,initialize_database,engine
+from .database import Assessment,Attempt,CyberSandboxChallenge,GeneratedBehaviouralCase,GeneratedQuiz,GeneratedQuizQuestion,OutboxEvent,Question,QuizAttempt,SessionRecord,StatEngineMastery,StatEngineQuestion,TechnicalLabTemplate,get_db,initialize_database,engine
+from .adaptive import next_question,public_question,submit_answer
+from .case_generation import build_case
 from .engines import REGISTRY,public_state
 from .interview import PHASES,build_report,report_ai_request,start_state,submit_turn,turn_ai_request
 from .schemas import AssessmentCreate,CalculationRequest,ChartRequest,SessionAnswer,SessionStart,SubmitAssessmentRequest
 from .security import Principal,current_principal,require_admin
+from .scenarios import answer as answer_scenario,catalogue as scenario_catalogue,start as start_scenario_state,start_response as scenario_start_response,summaries as scenario_summaries,summary as scenario_summary_data
 from .statistical import StatisticalInputError,calculate,chart_spec
+from .technical_labs import find_template,present_template,template_catalogue
+from .quiz_generation import generate_questions
 @asynccontextmanager
 async def lifespan(app:FastAPI): initialize_database(); yield
 app=FastAPI(title="iGOT Assessment Service",version="1.0",lifespan=lifespan)
@@ -37,6 +42,28 @@ class BehaviouralCaseGeneration(BaseModel):
     document_type:str="Government Notice"
     issuing_authority:str="Department of Personnel & Training (DoPT)"
     statutory_reference:str="CCS (Conduct) Rules / GFR 2017"
+
+class CourseCaseGeneration(BaseModel):
+    custom_notice_text:str|None=None
+
+class NextQuestionRequest(BaseModel):
+    user_id:str|None=None
+    competency_id:str="price_statistics"
+    preferred_skill_id:str|None=None
+    current_difficulty:str|None=None
+    question_type:str|None=None
+
+class GenerateQuestionRequest(BaseModel):
+    skill_id:str
+    difficulty:str|None=None
+    question_type:str|None=None
+    seed:int|None=None
+
+class SubmitQuestionRequest(BaseModel):
+    user_id:str|None=None
+    question_id:str
+    submitted_answer:str|float|int
+    time_taken_seconds:int|None=None
 
 class InterviewStart(BaseModel):
     course_id:int
@@ -63,6 +90,21 @@ class InterviewTurn(BaseModel):
 
 class InterviewEnd(BaseModel):
     session_id:str
+
+class ScenarioStart(BaseModel):
+    scenario_id:str|None=None
+
+class ScenarioAnswer(BaseModel):
+    option_id:str
+
+class LabSubmission(BaseModel):
+    code:str
+
+class LabAssistantRequest(BaseModel):
+    message:str
+    current_code:str=""
+    active_output:str|None=None
+    history:list[dict]=[]
 
 MAX_DICTATION_BYTES=25*1024*1024
 SARVAM_STT_URL="https://api.sarvam.ai/speech-to-text"
@@ -112,11 +154,67 @@ def generate_chart(req:ChartRequest,_:Principal=Depends(current_principal)):
     try:return chart_spec(req.chart_type,req.title,req.data,req.x_field,req.y_fields)
     except StatisticalInputError as exc:raise HTTPException(422,str(exc))
 
+@app.post("/v1/questions/next")
+def adaptive_next(req:NextQuestionRequest,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return next_question(db,principal.user_id,req.competency_id,req.preferred_skill_id,req.current_difficulty,req.question_type)
+
+@app.post("/v1/questions/generate")
+def adaptive_generate(req:GenerateQuestionRequest,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    rows=db.scalars(select(StatEngineQuestion).where(StatEngineQuestion.skill_id==req.skill_id)).all()
+    rows=[q for q in rows if (not req.question_type or q.question_type==req.question_type) and (not req.difficulty or q.difficulty==req.difficulty)]
+    if not rows:raise HTTPException(404,"No question matches the requested skill and format")
+    return public_question(rows[0])
+
+@app.post("/v1/questions/submit")
+def adaptive_submit(req:SubmitQuestionRequest,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return submit_answer(db,principal.user_id,req.question_id,req.submitted_answer,req.time_taken_seconds)
+
+@app.get("/v1/competencies")
+def adaptive_competencies(_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    rows=db.scalars(select(StatEngineQuestion)).all()
+    return [{"id":code,"domain":"statistical","name":code.replace("_"," ").title(),"skills":sorted({q.skill_id for q in rows if q.competency_id==code})} for code in sorted({q.competency_id for q in rows})]
+
+@app.get("/v1/competencies/{competency_id}")
+def adaptive_competency(competency_id:str,_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    rows=db.scalars(select(StatEngineQuestion).where(StatEngineQuestion.competency_id==competency_id)).all()
+    if not rows:raise HTTPException(404,"Competency not found")
+    return {"id":competency_id,"domain":"statistical","name":competency_id.replace("_"," ").title(),"skills":sorted({q.skill_id for q in rows})}
+
+@app.get("/v1/users/{user_id}/competencies")
+def adaptive_user_competencies(user_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    if user_id not in {str(principal.user_id),principal.full_name} and principal.role!="admin":raise HTTPException(403,"Cannot read another learner's mastery")
+    return [{"skill_id":row.skill_id,"score":row.score,"level":"master" if row.score>=90 else "advanced" if row.score>=75 else "intermediate" if row.score>=50 else "basic" if row.score>=25 else "novice","attempts_count":row.attempts_count,"correct_count":row.correct_count} for row in db.scalars(select(StatEngineMastery).where(StatEngineMastery.user_id==principal.user_id)).all()]
+
 @app.get("/v1/quiz")
 def list_quizzes(principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
     quizzes=db.scalars(select(GeneratedQuiz).order_by(GeneratedQuiz.created_at.desc())).all()
     best=dict(db.execute(select(QuizAttempt.quiz_id,func.max(QuizAttempt.score_percent)).where(QuizAttempt.user_id==principal.user_id).group_by(QuizAttempt.quiz_id)).all())
     return [{**_serialize_quiz(quiz,principal,False),"best_score":best.get(quiz.id)} for quiz in quizzes]
+
+@app.post("/v1/quiz/generate",status_code=201)
+async def generate_quiz(file:UploadFile|None=File(None),text:str|None=Form(None),title:str|None=Form(None),num_questions:int=Form(10),difficulty:str=Form("intermediate"),principal:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    if not 1<=num_questions<=30:raise HTTPException(400,"num_questions must be between 1 and 30")
+    if difficulty not in {"beginner","intermediate","advanced"}:raise HTTPException(400,"Unsupported quiz difficulty")
+    if file is None and not (text and text.strip()):raise HTTPException(400,"Upload a file or paste learning material")
+    if file is not None:
+        payload=await file.read(20*1024*1024+1)
+        if len(payload)>20*1024*1024:raise HTTPException(413,"File too large (max 20 MB)")
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                extracted=await client.post(f"{get_settings().content_service_url}/v1/extract/text",headers={"Authorization":authorization or ""},files={"file":(file.filename or "upload.txt",payload,file.content_type or "application/octet-stream")})
+                extracted.raise_for_status();content=extracted.json()["text"]
+        except httpx.HTTPStatusError as exc:raise HTTPException(exc.response.status_code,exc.response.text) from exc
+        except (httpx.RequestError,ValueError,KeyError) as exc:raise HTTPException(503,"Document extraction is unavailable") from exc
+        source_name=file.filename or "Upload";source_type=source_name.rsplit(".",1)[-1].lower()
+    else:
+        content=text or "";source_name="Pasted text";source_type="text"
+    if len(content.strip())<200:raise HTTPException(422,"At least 200 readable characters are required")
+    questions,generator=await generate_questions(content,num_questions,difficulty,authorization,get_settings().ai_service_url)
+    if not questions:raise HTTPException(422,"Could not generate questions from this material")
+    quiz=GeneratedQuiz(user_id=principal.user_id,title=(title or "").strip() or f"Quiz: {source_name.rsplit('.',1)[0]}",source_name=source_name,source_type=source_type,source_excerpt=content.strip()[:1000],difficulty=difficulty,generator=generator)
+    quiz.questions=[GeneratedQuizQuestion(order=index,question_text=item["question"],options=item["options"],correct_option_index=item["correct_index"],explanation=item["explanation"],concept=item["concept"]) for index,item in enumerate(questions,start=1)]
+    db.add(quiz);db.commit();db.refresh(quiz)
+    return _serialize_quiz(quiz,principal)
 
 @app.get("/v1/quiz/{quiz_id}")
 def get_quiz(quiz_id:int,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
@@ -151,9 +249,85 @@ def delete_quiz(quiz_id:int,principal:Principal=Depends(current_principal),db:Se
 def technical_templates(_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
     return [{"id":item.id,"title":item.title,"skill":item.skill,"language":item.language,"difficulty":item.difficulty,"lab_type":item.lab_type,"tags":item.tags} for item in db.scalars(select(TechnicalLabTemplate).order_by(TechnicalLabTemplate.title)).all()]
 
+@app.get("/v1/technical-courses/labs")
+def technical_labs(_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return [present_template(number,template) for number,template in template_catalogue(db)]
+
+@app.get("/v1/technical-courses/labs/{lab_id}")
+def technical_lab(lab_id:int,_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    template=find_template(db,lab_id)
+    if not template:raise HTTPException(404,"Lab not found")
+    return present_template(lab_id,template,detail=True)
+
+@app.post("/v1/technical-courses/labs/{lab_id}/execute")
+async def grade_technical_lab(lab_id:int,req:LabSubmission,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    template=find_template(db,lab_id)
+    if not template:raise HTTPException(404,"Lab not found")
+    if len(req.code)>12000:raise HTTPException(413,"Submitted code is too large")
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            response=await client.post(f"{get_settings().labs_service_url}/v1/code/grade",headers={"Authorization":authorization or "","X-Internal-Secret":get_settings().internal_event_secret},json={"code":req.code,"tests":template.test_cases_template or []})
+            response.raise_for_status();result=response.json()
+    except httpx.HTTPStatusError as exc:raise HTTPException(exc.response.status_code,exc.response.text) from exc
+    except (httpx.RequestError,ValueError) as exc:raise HTTPException(503,"Lab runtime is unavailable") from exc
+    passed=result["passed_tests_count"];total=result["total_tests_count"]
+    return {"lab_id":lab_id,**result,"feedback":"All test cases passed!" if passed==total and total else f"{passed} of {total} test cases passed."}
+
+@app.post("/v1/technical-courses/labs/{lab_id}/assistant")
+async def technical_lab_assistant(lab_id:int,req:LabAssistantRequest,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    template=find_template(db,lab_id)
+    if not template:raise HTTPException(404,"Lab not found")
+    prompt=f"Lab: {template.title}\nInstructions: {template.instructions_template}\nConstraints: {template.constraints}\nCurrent code:\n{req.current_code[:4000]}\nLatest output: {(req.active_output or '')[:1000]}\nLearner question: {req.message[:1000]}"
+    messages=[{"role":"system","content":"You are a Socratic Python lab coach. Give one conceptual hint and one next action. Never provide completed code, hidden tests, or the reference solution. Keep it under 140 words."},{"role":"user","content":prompt}]
+    response,provider=await _interview_ai(messages,{"response":"one concise coaching hint"},authorization)
+    hint=str(response.get("response") or "").strip() if response else ""
+    if not hint or "```" in hint:
+        hint="Check the failing output, identify which requirement it violates, and test one small input before changing your function."
+        provider="guided-fallback"
+    return {"response":hint[:1600],"source":provider,"suggestions":["Explain my latest error","Give me a smaller hint","What should I test next?"]}
+
 @app.get("/v1/digital-governance/sandbox/challenges")
 def cyber_challenges(db:Session=Depends(get_db)):
     return [{"id":item.id,"title":item.title,"category":item.category,"difficulty":item.difficulty,"points":item.points,"duration_minutes":item.duration_minutes,"is_flagship":item.is_flagship,"solved":False,"competency_id":item.competency_id,"tags":item.tags,"mitre_techniques":item.mitre_techniques,"objectives":item.objectives} for item in db.scalars(select(CyberSandboxChallenge).order_by(CyberSandboxChallenge.title)).all()]
+
+@app.get("/v1/digital-governance/scenarios")
+def digital_scenarios():return scenario_summaries()
+
+@app.get("/v1/digital-governance/scenarios/{scenario_id}")
+def digital_scenario(scenario_id:str):
+    scenario=scenario_catalogue().get(scenario_id)
+    if not scenario:raise HTTPException(404,"Scenario not found")
+    return scenario
+
+def _scenario_session(session_id:str,principal:Principal,db:Session)->tuple[SessionRecord,dict]:
+    record=db.get(SessionRecord,session_id)
+    if not record or record.user_id!=principal.user_id or record.engine!="digital_governance_scenario":raise HTTPException(404,"Scenario session not found")
+    scenario=scenario_catalogue().get(record.state.get("scenario_id"))
+    if not scenario:raise HTTPException(409,"Scenario definition is unavailable")
+    return record,scenario
+
+@app.post("/v1/digital-governance/scenarios/session/start")
+def start_digital_scenario(req:ScenarioStart|None=None,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    scenario_id=req.scenario_id if req and req.scenario_id else "dg-sec-01-ransomware-treasury"
+    scenario=scenario_catalogue().get(scenario_id)
+    if not scenario:raise HTTPException(404,"Scenario not found")
+    state=start_scenario_state(scenario)
+    record=SessionRecord(user_id=principal.user_id,engine="digital_governance_scenario",state=state);db.add(record);db.commit()
+    return scenario_start_response(record.id,scenario,state)
+
+@app.post("/v1/digital-governance/scenarios/session/{session_id}/answer")
+def submit_digital_scenario_answer(session_id:str,req:ScenarioAnswer,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record,scenario=_scenario_session(session_id,principal,db)
+    if record.status!="active":raise HTTPException(409,"Scenario session is complete")
+    try:state,response=answer_scenario(record.id,scenario,dict(record.state),req.option_id)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+    record.state=state;record.status="completed" if state["is_terminal"] else "active";db.commit();return response
+
+@app.get("/v1/digital-governance/scenarios/session/{session_id}/summary")
+def digital_scenario_summary(session_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    record,scenario=_scenario_session(session_id,principal,db)
+    if not record.state.get("is_terminal"):raise HTTPException(409,"Scenario session is still active")
+    return scenario_summary_data(record.id,scenario,record.state)
 
 @app.get("/v1/behavioural/courses")
 async def behavioural_courses(behavioural_only:bool=False):
@@ -175,45 +349,54 @@ def behavioural_document(document_id:str):
     if not document:raise HTTPException(404,"Government document not found")
     return document
 
+def _case_or_none(case_id:str,principal:Principal,db:Session)->dict|None:
+    authored=find_case(case_id)
+    if authored:return authored
+    generated=db.get(GeneratedBehaviouralCase,case_id)
+    return generated.definition if generated and (generated.user_id==principal.user_id or principal.role=="admin") else None
+
 @app.get("/v1/behavioural/cases")
-def behavioural_cases(course_id:int|None=Query(None)): return all_cases(course_id)
+def behavioural_cases(course_id:int|None=Query(None),principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    records=db.scalars(select(GeneratedBehaviouralCase).where(GeneratedBehaviouralCase.user_id==principal.user_id)).all()
+    return all_cases(course_id)+[row.definition for row in records if course_id is None or row.course_id==course_id]
 
 @app.post("/v1/behavioural/cases/generate",status_code=201)
-def generate_behavioural_case(req:BehaviouralCaseGeneration):
+def generate_behavioural_case(req:BehaviouralCaseGeneration,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
     if len(req.raw_text.strip())<50:raise HTTPException(400,"Document text must contain at least 50 characters")
-    case=find_case("case_ccs_rule14_inquiry");case["id"]=f"case-{uuid4()}";case["title"]=req.document_title;case["document_id"]=f"document-{uuid4()}";case["document_title"]=req.document_title;case["document_type"]=req.document_type;case["statutory_citations"]=[req.statutory_reference]
-    for question in case["questions"].values():question["case_id"]=case["id"]
-    CASES.append(case);return case
+    case=build_case(req.raw_text,req.document_title,req.document_type,req.issuing_authority,req.statutory_reference)
+    db.add(GeneratedBehaviouralCase(id=case["id"],user_id=principal.user_id,definition=case));db.commit();return case
 
 @app.get("/v1/behavioural/cases/{case_id}")
-def behavioural_case(case_id:str):
-    case=find_case(case_id)
+def behavioural_case(case_id:str,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    case=_case_or_none(case_id,principal,db)
     if not case:raise HTTPException(404,"Case scenario not found")
     return case
 
 @app.get("/v1/behavioural/courses/{course_id}/cases")
-def behavioural_course_cases(course_id:int): return all_cases(course_id)
+def behavioural_course_cases(course_id:int,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    return behavioural_cases(course_id,principal,db)
 
 @app.post("/v1/behavioural/courses/{course_id}/generate-case",status_code=201)
-async def generate_course_case(course_id:int):
-    case=find_case("case_ccs_rule14_inquiry")
-    if not case:raise HTTPException(404,"No behavioural case template available")
-    metadata=await course_metadata(str(course_id));case["id"]=f"course-{course_id}-{uuid4()}";case["course_id"]=course_id;case["course_title"]=metadata.get("title",f"Course {course_id}");case["course_organization"]=metadata.get("organization","")
-    for question in case["questions"].values():question["case_id"]=case["id"]
-    CASES.append(case);return case
+async def generate_course_case(course_id:int,req:CourseCaseGeneration,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    metadata=await course_metadata(str(course_id))
+    notice=(req.custom_notice_text or "").strip() or str(metadata.get("material") or metadata.get("overview") or "").strip()
+    if len(notice)<50:raise HTTPException(400,"Provide at least 50 characters of notice or course material")
+    title=str(metadata.get("title") or f"Course {course_id}")
+    case=build_case(notice,title,"Course notice",str(metadata.get("organization") or "Course provider"),"",course_id,title,str(metadata.get("organization") or ""))
+    db.add(GeneratedBehaviouralCase(id=case["id"],user_id=principal.user_id,course_id=course_id,definition=case));db.commit();return case
 
 @app.post("/v1/behavioural/session/start",status_code=201)
 def start_behavioural_session(req:BehaviouralSessionStart,principal:Principal=Depends(current_principal),db:Session=Depends(get_db)):
-    case=find_case(req.case_id) if req.case_id else (all_cases()[0] if all_cases() else None)
+    case=_case_or_none(req.case_id,principal,db) if req.case_id else (all_cases()[0] if all_cases() else None)
     if not case:raise HTTPException(404,"Case scenario not found")
-    question=case["questions"][case["root_question_id"]];state={"case_id":case["id"],"question_id":question["id"],"trail":[],"completed":False}
+    question=case["questions"][case["root_question_id"]];state={"case_id":case["id"],"case_snapshot":case,"question_id":question["id"],"trail":[],"completed":False}
     record=SessionRecord(user_id=principal.user_id,engine="behavioural_carryforward",state=state);db.add(record);db.commit()
     return {"session_id":record.id,"case_id":case["id"],"case_title":case["title"],"document_title":case["document_title"],"document_type":case["document_type"],"initial_context":case["initial_context"],"current_question":question}
 
 def _behavioural_record(session_id:str,principal:Principal,db:Session)->tuple[SessionRecord,dict]:
     record=db.get(SessionRecord,session_id)
     if not record or record.user_id!=principal.user_id or record.engine!="behavioural_carryforward":raise HTTPException(404,"Session not found")
-    case=find_case(record.state["case_id"])
+    case=record.state.get("case_snapshot") or _case_or_none(record.state["case_id"],principal,db)
     if not case:raise HTTPException(409,"Session case is unavailable")
     return record,case
 

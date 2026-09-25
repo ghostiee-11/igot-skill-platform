@@ -1,9 +1,30 @@
-import ipaddress,re,socket
+import io,ipaddress,re,socket
+from pathlib import Path
 from urllib.parse import quote_plus,urlparse
 import asyncio
 import httpx
 from bs4 import BeautifulSoup
 class ExtractionError(ValueError):pass
+def extract_document(filename:str,data:bytes)->str:
+    extension=Path(filename or "").suffix.lower()
+    if extension==".pdf":
+        from pypdf import PdfReader
+        return "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages)
+    if extension==".pptx":
+        from pptx import Presentation
+        presentation=Presentation(io.BytesIO(data));parts=[]
+        for slide in presentation.slides:
+            for shape in slide.shapes:
+                if shape.has_text_frame:parts.append(shape.text_frame.text)
+            if slide.has_notes_slide:parts.append(slide.notes_slide.notes_text_frame.text)
+        return "\n".join(parts)
+    if extension==".docx":
+        from docx import Document
+        return "\n".join(paragraph.text for paragraph in Document(io.BytesIO(data)).paragraphs)
+    if extension in {".txt",".md",".vtt",".srt"}:
+        value=data.decode("utf-8",errors="replace")
+        return clean_transcript(value) if extension in {".vtt",".srt"} else value
+    raise ExtractionError("Upload PDF, PPTX, DOCX, TXT, MD, VTT, or SRT learning material")
 def normalize_text(value:str)->str:return re.sub(r"\n{3,}","\n\n",re.sub(r"[ \t]+"," ",value)).strip()
 async def extract_web_text(uri:str)->tuple[str,dict]:
     parsed=urlparse(uri)

@@ -1,6 +1,8 @@
 # Service migration status
 
-Last updated: 2026-09-23. Branch: `rebuild/service-architecture`.
+Last updated: 2026-09-25. Branch: `rebuild/service-architecture`.
+
+The 2026-09-23 baseline below is historical. The [runtime parity audit](runtime-parity-audit-2026-09-23.md#repair-follow-up-2026-09-25) tracks the later local curriculum import and repaired scenario, lab, quiz, adaptive and behavioural-case contracts. The new adaptive/case changes pass service tests and Alembic SQL generation, but have not been redeployed through Compose because Docker Desktop is unavailable on this machine.
 
 ## Verified baseline
 
@@ -23,10 +25,10 @@ Last updated: 2026-09-23. Branch: `rebuild/service-architecture`.
 
 ## Remaining work before cutover
 
-The [2026-09-23 runtime parity audit](runtime-parity-audit-2026-09-23.md) records live API failures and legacy/current data counts for the blocked learner journeys.
+The [2026-09-23 runtime parity audit](runtime-parity-audit-2026-09-23.md) records the original failures and subsequent repair follow-up.
 
-- Complete legacy compatibility for adaptive statistical mastery, generated technical labs and digital-governance session workflows. Behavioural course, corpus, case, carryforward-session and restart-safe live-interview routes are now implemented; speech transcription still requires an external provider configuration.
-- Migrate the legacy lesson records into the active learning database for full course-material grounding. In the current local database, behavioural course 1 has an overview but no module or lesson rows; its live interview uses that overview until lessons are imported.
+- Validate the newest adaptive statistical and generated-case changes through a restarted Compose stack. The earlier lesson import, scenarios, technical lab and quiz generation were verified live locally.
+- Decide whether notice-based cases require model-authored branching and expert statutory review; the current generic decision tree preserves source text and durable session behavior but is not a legal interpretation.
 - Extend reconciliation beyond counts: verify ID sets, password hashes, JSON payloads and timestamps, then rehearse rollback/restore from a database snapshot.
 - Exercise the complete browser learner journey through the gateway, including registration, enrolment, course completion, assessment evidence, quiz generation and lab ingress/WebSocket proxying.
 - Add durable outbox publishers/consumers and recovery tests; persisting outbox records alone does not deliver events.

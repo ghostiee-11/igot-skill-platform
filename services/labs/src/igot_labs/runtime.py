@@ -43,7 +43,7 @@ class DockerRuntime:
         except NotFound:return "missing"
         except DockerException as exc:raise RuntimeUnavailable(str(exc))
     def execute(self,container_id:str,argv:list[str])->dict:
-        if not argv or len(argv)>32 or any(len(v)>4096 for v in argv):raise ValueError("invalid command arguments")
+        if not argv or len(argv)>32 or any(len(v)>16000 for v in argv):raise ValueError("invalid command arguments")
         try:
             container=self.client.containers.get(container_id)
             pool=ThreadPoolExecutor(max_workers=1)

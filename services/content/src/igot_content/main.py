@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from fastapi import Depends,FastAPI,HTTPException
+from fastapi import Depends,FastAPI,File,HTTPException,UploadFile
 from fastapi.security import HTTPAuthorizationCredentials,HTTPBearer
 from jose import JWTError,jwt
 from pydantic import BaseModel,Field
@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import get_settings
 from .database import Job,Source,TechnicalTranscript,engine,get_db,initialize_database
-from .extraction import chunk_text,clean_transcript,discovery_links
+from .extraction import ExtractionError,chunk_text,clean_transcript,discovery_links,extract_document
 @dataclass
 class Principal:user_id:int;role:str
 bearer=HTTPBearer(auto_error=False)
@@ -61,6 +61,15 @@ def get_job(job_id:str,p:Principal=Depends(principal),db:Session=Depends(get_db)
     return {"id":job.id,"source_id":job.source_id,"status":job.status,"progress":job.progress,"error":job.error,"result":job.result}
 @app.post("/v1/discover")
 def discover(req:DiscoverRequest,_:Principal=Depends(principal)):return {"query":req.query,"results":discovery_links(req.query,req.limit)}
+
+@app.post("/v1/extract/text")
+async def extract_uploaded_text(file:UploadFile=File(...),_:Principal=Depends(principal)):
+    data=await file.read(20*1024*1024+1)
+    if len(data)>20*1024*1024:raise HTTPException(413,"File too large (max 20 MB)")
+    try:value=extract_document(file.filename or "",data)
+    except ExtractionError as exc:raise HTTPException(400,str(exc)) from exc
+    except Exception as exc:raise HTTPException(422,"The document could not be read. It may be damaged or password protected.") from exc
+    return {"text":value,"source_name":file.filename or "Upload"}
 
 @app.post("/v1/technical-courses/process")
 def process_transcript(req:TranscriptRequest,_:Principal=Depends(principal),db:Session=Depends(get_db)):
