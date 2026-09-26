@@ -1,8 +1,12 @@
 # Replace these placeholders with real GitHub users or teams before enforcing review.
 # Paths document intended review ownership; they do not grant repository access.
 * @karmayogi-platform-maintainers
-/frontend/ @karmayogi-frontend-team
+/apps/frontend/ @karmayogi-frontend-team
+/apps/gateway/ @karmayogi-backend-team
+/services/ @karmayogi-backend-team
+/contracts/ @karmayogi-platform-maintainers
+/infra/ @karmayogi-platform-maintainers
 /backend/ @karmayogi-backend-team
-/ai-service/ @karmayogi-ai-team
+/services/ai/ @karmayogi-ai-team
 /docs/ @karmayogi-platform-maintainers
 /docker-compose*.yml @karmayogi-platform-maintainers

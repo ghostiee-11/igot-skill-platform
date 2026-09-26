@@ -31,6 +31,7 @@ dist/
 *.sqlite
 *.sqlite3
 backend/karmayogi.db
+infra/storage/backups/
 backend/backend-server*.log
 backend/backend-dev*.log
 backend/recordings/
@@ -53,3 +54,5 @@ content-pipeline/content/
 Thumbs.db
 .vscode/
 .idea/
+
+restructure/

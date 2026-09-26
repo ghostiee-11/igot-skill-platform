@@ -1,0 +1,16 @@
+{
+  "event_id": "9aac8df8-36cc-4cd8-9f8b-6834099c9639",
+  "event_type": "assessment.completed",
+  "schema_version": 1,
+  "occurred_at": "2026-09-17T10:00:00Z",
+  "producer": "assessment",
+  "idempotency_key": "assessment:attempt-42:completed",
+  "data": {
+    "attempt_id": "attempt-42",
+    "assessment_id": "assessment-7",
+    "user_id": "user-5",
+    "engine": "statistical",
+    "score": 82.5,
+    "completed_at": "2026-09-17T10:00:00Z"
+  }
+}

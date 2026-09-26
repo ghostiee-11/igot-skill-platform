@@ -3,7 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "description": "iGOT Karmayogi - Official Statistical System (MoSPI) Platform",
+  "workspaces": [
+    "apps/frontend",
+    "packages/typescript/*"
+  ],
   "scripts": {
+    "dev:frontend": "npm --workspace apps/frontend run dev",
+    "build:frontend": "npm --workspace apps/frontend run build",
+    "lint:frontend": "npm --workspace apps/frontend run lint",
+    "contracts:export": "python scripts/export-openapi.py",
+    "contracts:validate": "python scripts/validate-contracts.py",
+    "client:generate": "npm --workspace @igot/api-client run generate",
     "supabase": "supabase",
     "supabase:login": "supabase login",
     "supabase:link": "supabase link",

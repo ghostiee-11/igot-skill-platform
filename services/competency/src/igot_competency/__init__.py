@@ -1,0 +1,1 @@
+"""Competency intelligence service."""

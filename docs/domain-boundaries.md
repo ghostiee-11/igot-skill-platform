@@ -1,5 +1,7 @@
 # LMS domain boundaries
 
+> Historical monolith boundaries. For the rebuild use the [service catalogue](services/README.md), [architecture](architecture/service-architecture.md) and [data map](migration/data-ownership.md).
+
 The backend is organized as a modular monolith under `backend/app/modules`. This
 change moves existing routers and request schemas; it does not introduce new
 business behavior.

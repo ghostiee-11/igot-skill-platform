@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://igot.example/contracts/events/lab-session-lifecycle.v1.schema.json",
+  "title": "Lab session lifecycle update",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "event_type", "schema_version", "occurred_at", "producer", "idempotency_key", "data"],
+  "properties": {
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_type": {"const": "labs.session_lifecycle"},
+    "schema_version": {"const": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "producer": {"const": "labs"},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "user_id", "state", "updated_at"],
+      "properties": {
+        "session_id": {"type": "string", "minLength": 1},
+        "user_id": {"type": "string", "minLength": 1},
+        "state": {"enum": ["provisioning", "ready", "running", "resetting", "terminated", "expired", "failed"]},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

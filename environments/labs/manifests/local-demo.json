@@ -1,0 +1,12 @@
+{
+  "id": "local-demo",
+  "workspace_image": "igot/lab-workspace:local",
+  "target_images": ["igot/target-demo:local"],
+  "workspace_port": 2718,
+  "target_ports": [8080],
+  "capabilities": ["browser-notebook", "private-target-network"],
+  "limitations": [
+    "Container isolation is not equivalent to a cloud virtual machine.",
+    "The demo target is not intentionally vulnerable."
+  ]
+}

@@ -1,0 +1,20 @@
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
+    database_url: str = "postgresql+psycopg://assessment_service:assessment_service@localhost:5432/igot"
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    learning_url: str = "http://learning:8102"
+    competency_url: str = "http://competency:8104"
+    ai_service_url: str = "http://ai:8105"
+    labs_service_url: str = "http://labs:8107"
+    content_service_url: str = "http://content:8106"
+    internal_event_secret: str = ""
+    rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672//"
+    sarvam_api_key: str = ""
+    auto_create_schema: bool = False
+
+@lru_cache
+def get_settings() -> Settings: return Settings()
