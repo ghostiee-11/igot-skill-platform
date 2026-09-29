@@ -34,15 +34,18 @@ def sync_course_curriculum_videos(db: Session):
     """Synchronizes modules and lesson segment-level video metadata across all 4 courses in the database."""
     ensure_lesson_schema_columns(db)
 
-    # 1. Course 1: Behavioural Competency
+    # 1. Course 1: Behavioural Competency (Learn -> Case Study -> AI Interview)
     c1 = db.query(Course).filter(Course.title == "Civil Service Conduct, Administrative Ethics & Interpersonal Leadership").first()
     if c1:
-        # Module 1
+        # Module 1: Learn - Statutory Code of Conduct & Ethics
         m1_1 = db.query(Module).filter(Module.course_id == c1.id, Module.order == 1).first()
         if not m1_1:
             m1_1 = Module(course_id=c1.id, title="Module 1: Statutory Code of Conduct & Ethics", description="CCS (Conduct) Rules 1964, integrity standards, and avoidance of conflict of interest.", order=1)
             db.add(m1_1)
             db.flush()
+        else:
+            m1_1.title = "Module 1: Statutory Code of Conduct & Ethics"
+            m1_1.description = "CCS (Conduct) Rules 1964, integrity standards, and avoidance of conflict of interest."
         
         l1_1_1 = db.query(Lesson).filter(Lesson.module_id == m1_1.id, Lesson.order == 1).first()
         if not l1_1_1:
@@ -66,6 +69,7 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l1_1_1)
         else:
+            l1_1_1.title = "Lesson 1: Statutory Framework of CCS (Conduct) Rules, 1964"
             l1_1_1.topic = "Statutory Conduct & General Principles of Integrity"
             l1_1_1.learning_objective = "Analyze Rule 3 obligations, constitutional neutrality, and statutory limitations on administrative discretion."
             l1_1_1.source_video_title = "OnlyIAS - Civil Service Ethics & Administrative Conduct Masterclass"
@@ -97,6 +101,7 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l1_1_2)
         else:
+            l1_1_2.title = "Lesson 2: Ethical Decision Making & Conflict of Interest"
             l1_1_2.topic = "Conflict of Interest, Gifts & Pecuniary Bias"
             l1_1_2.learning_objective = "Master statutory recusal protocols, gifts declaration limits (Rule 13), and commercial cooling-off periods."
             l1_1_2.source_video_title = "Drishti IAS - Ethics & Administrative Decision Making"
@@ -106,27 +111,30 @@ def sync_course_curriculum_videos(db: Session):
             l1_1_2.duration_minutes = 22
             l1_1_2.content_type = "video"
 
-        # Module 2
+        # Module 2: Practice - Administrative Case Inquiries & Disciplinary Simulations
         m1_2 = db.query(Module).filter(Module.course_id == c1.id, Module.order == 2).first()
         if not m1_2:
-            m1_2 = Module(course_id=c1.id, title="Module 2: Quasi-Judicial Inquiries & Natural Justice", description="Conducting departmental proceedings under Rule 14 CCS (CCA) Rules.", order=2)
+            m1_2 = Module(course_id=c1.id, title="Module 2: Practical Administrative Case Inquiries", description="Branching scenario inquiries under Rule 14 CCS (CCA) Rules, evidence disclosure, and ethical decision making.", order=2)
             db.add(m1_2)
             db.flush()
+        else:
+            m1_2.title = "Module 2: Practical Administrative Case Inquiries"
+            m1_2.description = "Branching scenario inquiries under Rule 14 CCS (CCA) Rules, evidence disclosure, and ethical decision making."
 
-        l1_2_1 = db.query(Lesson).filter(Lesson.module_id == m1_2.id, Lesson.order == 1).first() or db.query(Lesson).filter(Lesson.module_id == m1_2.id).first()
+        l1_2_1 = db.query(Lesson).filter(Lesson.module_id == m1_2.id, Lesson.order == 1).first()
         if not l1_2_1:
             l1_2_1 = Lesson(
                 module_id=m1_2.id,
-                title="Lesson 3: Principles of Natural Justice (Audi Alteram Partem)",
+                title="Lesson 3: Case Study: Rule 14 Disciplinary Inquiry & Evidence Disclosure",
                 topic="Quasi-Judicial Inquiries & Evidence Disclosure",
                 learning_objective="Execute Rule 14 departmental inquiry steps ensuring fair notice, document inspection, and cross-examination rights.",
                 source_video_title="Prof. Jeffrey Kaplan - Moral & Legal Obligations of Fair Hearing",
-                content_type="video",
-                duration_minutes=20,
+                content_type="case_study",
+                duration_minutes=25,
                 video_url="https://www.youtube.com/watch?v=DLCUn6h7qRo",
                 video_start_time=60,
                 video_end_time=1260,
-                content="""# Audi Alteram Partem in Departmental Proceedings\n\nIn any quasi-judicial proceeding governed by Rule 14 of CCS (CCA) Rules, 1965, the Charged Officer must be given fair notice and opportunity to inspect evidence.""",
+                content="""# Case Study: Rule 14 Departmental Inquiry\n\n### Administrative Dilemma\nA senior district official has been accused of non-adherence to procurement guidelines. As the Inquiry Officer (IO) under Rule 14 of CCS (CCA) Rules, you are presented with confidential audit notes and a request from the Presenting Officer to withhold certain contractor correspondences.\n\n### Task Requirements:\n1. Apply the doctrine of *Audi Alteram Partem* (hear the other side).\n2. Decide whether the Charged Officer has statutory right to inspect listed and unlisted defense documents.\n3. Draft standard speaking order balancing administrative expediency with natural justice.\n\nLaunch the Case Inquiry Workbench below to step through the multi-stage administrative decision tree.""",
                 activity_question="What does the doctrine of Audi Alteram Partem require during a Rule 14 inquiry?",
                 activity_options_json=json.dumps(["Granting fair hearing and opportunity to inspect evidence and cross-examine witnesses", "Allowing the prosecution to hide confidential witness statements", "Ordering immediate punishment without recording evidence", "Conducting ex-parte hearings without notice"]),
                 activity_correct_option=0,
@@ -135,29 +143,59 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l1_2_1)
         else:
-            l1_2_1.title = "Lesson 3: Principles of Natural Justice (Audi Alteram Partem)"
+            l1_2_1.title = "Lesson 3: Case Study: Rule 14 Disciplinary Inquiry & Evidence Disclosure"
             l1_2_1.topic = "Quasi-Judicial Inquiries & Evidence Disclosure"
             l1_2_1.learning_objective = "Execute Rule 14 departmental inquiry steps ensuring fair notice, document inspection, and cross-examination rights."
             l1_2_1.source_video_title = "Prof. Jeffrey Kaplan - Moral & Legal Obligations of Fair Hearing"
             l1_2_1.video_url = "https://www.youtube.com/watch?v=DLCUn6h7qRo"
             l1_2_1.video_start_time = 60
             l1_2_1.video_end_time = 1260
-            l1_2_1.duration_minutes = 20
-            l1_2_1.content_type = "video"
-            l1_2_1.order = 1
+            l1_2_1.duration_minutes = 25
+            l1_2_1.content_type = "case_study"
 
-        # Module 3
+        l1_2_2 = db.query(Lesson).filter(Lesson.module_id == m1_2.id, Lesson.order == 2).first()
+        if not l1_2_2:
+            l1_2_2 = Lesson(
+                module_id=m1_2.id,
+                title="Lesson 4: Case Study: Procurement Conflict of Interest & Commercial Recusal",
+                topic="Public Procurement Integrity & Recusal Protocol",
+                learning_objective="Resolve real-world administrative conflict-of-interest scenarios under CVC guidelines and GFR 2017.",
+                source_video_title=None,
+                content_type="case_study",
+                duration_minutes=25,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Case Study: Procurement Conflict of Interest & Commercial Recusal\n\n### Administrative Dilemma\nA high-value solar microgrid tender for tribal welfare centres is nearing financial evaluation. You discover that a first cousin is an independent director at the L1 bidder.\n\n### Task Requirements:\n1. Determine statutory disclosure obligations under Rule 4 of CCS (Conduct) Rules.\n2. Execute formal recusal note to the competent authority.\n3. Ensure file integrity and uninterrupted procurement timeline.\n\nLaunch the Case Inquiry Workbench below to record and evaluate your response against civil service behavioural rubrics.""",
+                activity_question="Under Rule 4(2) of CCS (Conduct) Rules, what is mandatory when a relative bids for a government contract under the officer's jurisdiction?",
+                activity_options_json=json.dumps(["Officer must submit a formal written recusal and refer the case to the next higher authority", "Officer may proceed if the lowest price bid is submitted", "Officer can verbally advise the committee without signing records", "Officer can proceed after taking informal approval over phone"]),
+                activity_correct_option=0,
+                activity_explanation="Rule 4(2) mandates immediate written reporting and formal recusal from all proceedings.",
+                order=2
+            )
+            db.add(l1_2_2)
+        else:
+            l1_2_2.title = "Lesson 4: Case Study: Procurement Conflict of Interest & Commercial Recusal"
+            l1_2_2.topic = "Public Procurement Integrity & Recusal Protocol"
+            l1_2_2.learning_objective = "Resolve real-world administrative conflict-of-interest scenarios under CVC guidelines and GFR 2017."
+            l1_2_2.content_type = "case_study"
+            l1_2_2.duration_minutes = 25
+
+        # Module 3: Assess - Grievance De-escalation & AI Live Oral Defense Board
         m1_3 = db.query(Module).filter(Module.course_id == c1.id, Module.order == 3).first()
         if not m1_3:
-            m1_3 = Module(course_id=c1.id, title="Module 3: Administrative Negotiation & Public Leadership", description="High-pressure public communication, grievance redressal, and crisis leadership.", order=3)
+            m1_3 = Module(course_id=c1.id, title="Module 3: Administrative Negotiation & AI Live Oral Board", description="High-pressure public communication, grievance redressal, and interactive AI oral defense board.", order=3)
             db.add(m1_3)
             db.flush()
+        else:
+            m1_3.title = "Module 3: Administrative Negotiation & AI Live Oral Board"
+            m1_3.description = "High-pressure public communication, grievance redressal, and interactive AI oral defense board."
 
         l1_3_1 = db.query(Lesson).filter(Lesson.module_id == m1_3.id, Lesson.order == 1).first()
         if not l1_3_1:
             l1_3_1 = Lesson(
                 module_id=m1_3.id,
-                title="Lesson 4: Public Grievance Redressal & Crisis Negotiation",
+                title="Lesson 5: Public Grievance Redressal & Crisis Negotiation",
                 topic="Crisis De-escalation & CPGRAMS Redressal",
                 learning_objective="Deploy strategic communication frameworks to resolve public grievances and issue reasoned speaking orders.",
                 source_video_title="Stanford Graduate School of Business - Communication & Negotiation in High Stakes",
@@ -175,6 +213,7 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l1_3_1)
         else:
+            l1_3_1.title = "Lesson 5: Public Grievance Redressal & Crisis Negotiation"
             l1_3_1.topic = "Crisis De-escalation & CPGRAMS Redressal"
             l1_3_1.learning_objective = "Deploy strategic communication frameworks to resolve public grievances and issue reasoned speaking orders."
             l1_3_1.source_video_title = "Stanford Graduate School of Business - Communication & Negotiation in High Stakes"
@@ -184,15 +223,46 @@ def sync_course_curriculum_videos(db: Session):
             l1_3_1.duration_minutes = 20
             l1_3_1.content_type = "video"
 
-    # 2. Course 2: Statistical Competency
+        l1_3_2 = db.query(Lesson).filter(Lesson.module_id == m1_3.id, Lesson.order == 2).first()
+        if not l1_3_2:
+            l1_3_2 = Lesson(
+                module_id=m1_3.id,
+                title="Lesson 6: Practical Capstone: AI Civil Service Live Oral Defense Board",
+                topic="AI Live Competency Interview & Oral Defense",
+                learning_objective="Defend ethical administrative decisions in real-time oral interview evaluating leadership, impartiality, and crisis resolution.",
+                source_video_title=None,
+                content_type="interview",
+                duration_minutes=30,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Capstone: AI Civil Service Live Oral Defense Board\n\nIn this practical capstone assessment, you will participate in a live oral defense simulation before an AI panel of civil service examiners.\n\n### Assessment Dimensions:\n1. **Impartiality & Ethics**: Application of Rule 3 & natural justice.\n2. **Crisis Leadership**: Resolving resource disputes under public pressure.\n3. **Clarity & Articulation**: Concise, evidence-backed oral communication.\n\nLaunch the AI Oral Defense Board below to begin your live session.""",
+                activity_question="In an administrative oral defense board, what is the most critical attribute when addressing conflicting public priorities?",
+                activity_options_json=json.dumps(["Upholding constitutional neutrality and providing reasoned justification anchored in statutory rules", "Agreeing with all demands unconditionally", "Deferring all decisions to external agencies", "Avoiding answering direct questions"]),
+                activity_correct_option=0,
+                activity_explanation="Civil service leadership requires balanced, reasoned decisions grounded firmly in statutory mandates.",
+                order=2
+            )
+            db.add(l1_3_2)
+        else:
+            l1_3_2.title = "Lesson 6: Practical Capstone: AI Civil Service Live Oral Defense Board"
+            l1_3_2.topic = "AI Live Competency Interview & Oral Defense"
+            l1_3_2.learning_objective = "Defend ethical administrative decisions in real-time oral interview evaluating leadership, impartiality, and crisis resolution."
+            l1_3_2.content_type = "interview"
+            l1_3_2.duration_minutes = 30
+
+    # 2. Course 2: Statistical Competency (Learn -> Data Interpretation -> Adaptive Exam)
     c2 = db.query(Course).filter(Course.title == "Compilation of Consumer Price Index (CPI) & Inflation Metrics").first()
     if c2:
-        # Module 1
+        # Module 1: Learn - Index Formulation & Basket Selection
         m2_1 = db.query(Module).filter(Module.course_id == c2.id, Module.order == 1).first()
         if not m2_1:
             m2_1 = Module(course_id=c2.id, title="Module 1: Index Formulation & Basket Selection", description="Mathematical foundations of modified Laspeyres and Jevons price relatives.", order=1)
             db.add(m2_1)
             db.flush()
+        else:
+            m2_1.title = "Module 1: Index Formulation & Basket Selection"
+            m2_1.description = "Mathematical foundations of modified Laspeyres and Jevons price relatives."
 
         l2_1_1 = db.query(Lesson).filter(Lesson.module_id == m2_1.id, Lesson.order == 1).first()
         if not l2_1_1:
@@ -216,6 +286,7 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l2_1_1)
         else:
+            l2_1_1.title = "Lesson 1: The Modified Laspeyres Price Index Formula"
             l2_1_1.topic = "Modified Laspeyres Price Formulation"
             l2_1_1.learning_objective = "Derive the Modified Laspeyres price index formula and normalize consumption expenditure survey (CES) weights."
             l2_1_1.source_video_title = "Quantitative Index Formulation & Laspeyres Mathematics"
@@ -247,6 +318,7 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l2_1_2)
         else:
+            l2_1_2.title = "Lesson 2: Elementary Price Relatives & Weight Aggregation"
             l2_1_2.topic = "Jevons Geometric Mean & Price Relatives"
             l2_1_2.learning_objective = "Calculate elementary price relatives at the quotation level with Jevons geometric mean to minimize substitution bias."
             l2_1_2.source_video_title = "Price Lesson - Elementary Price Quotation Aggregation"
@@ -256,56 +328,146 @@ def sync_course_curriculum_videos(db: Session):
             l2_1_2.duration_minutes = 22
             l2_1_2.content_type = "video"
 
-        # Module 2
+        # Module 2: Practice - Practical Data Interpretation & Imputation Exercises
         m2_2 = db.query(Module).filter(Module.course_id == c2.id, Module.order == 2).first()
         if not m2_2:
-            m2_2 = Module(course_id=c2.id, title="Module 2: Imputation & Quality Adjustment", description="Techniques for disappearing items, seasonal goods, and rent imputation.", order=2)
+            m2_2 = Module(course_id=c2.id, title="Module 2: Practical Data Interpretation & Imputation Exercises", description="Interactive statistical calculation workbench for elementary price relatives, class-mean imputation, and price trends.", order=2)
             db.add(m2_2)
             db.flush()
+        else:
+            m2_2.title = "Module 2: Practical Data Interpretation & Imputation Exercises"
+            m2_2.description = "Interactive statistical calculation workbench for elementary price relatives, class-mean imputation, and price trends."
 
         l2_2_1 = db.query(Lesson).filter(Lesson.module_id == m2_2.id, Lesson.order == 1).first()
         if not l2_2_1:
             l2_2_1 = Lesson(
                 module_id=m2_2.id,
-                title="Lesson 3: Handling Disappearing Quotations & House Rent Imputation",
-                topic="Class Mean Imputation & Rent Quality Adjustment",
-                learning_objective="Apply class-mean imputation algorithms for temporarily unavailable items and semi-annual repeat rent surveys.",
-                source_video_title="Modelware Systems - Data Quality Frameworks & Imputation",
-                content_type="video",
-                duration_minutes=20,
-                video_url="https://www.youtube.com/watch?v=RuNp3l_2dGs",
-                video_start_time=240,
-                video_end_time=1440,
-                content="""# Imputation Techniques for Missing Price Quotations\n\nTechniques for handling missing price quotations: Class mean imputation, chain relatives, and repeat rent surveys.""",
-                activity_question="When a specific vegetable variety is temporarily unavailable in a market, which imputation method is standard?",
-                activity_options_json=json.dumps(["Imputing the price trend from the available varieties in the same sub-group", "Setting the price to zero", "Using the highest price recorded across all states", "Deleting the entire commodity from the state basket"]),
+                title="Lesson 3: Practical Exercise: Elementary Jevons Price Relative Calculation & Outlier Detection",
+                topic="Jevons Price Calculation & Statistical Validation",
+                learning_objective="Perform deterministic calculation of Jevons price relatives and flag anomalous price quotation outliers.",
+                source_video_title=None,
+                content_type="exercise",
+                duration_minutes=25,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Practical Exercise: Jevons Price Relative Calculation\n\n### Statistical Problem\nGiven 4 monthly market price quotations for Grade A Basmati Rice across 4 representative urban centres in Uttar Pradesh:\n\n| Centre | Base Price P_0 (Rs/kg) | Current Price P_t (Rs/kg) |\n|---|---|---|\n| Lucknow | 60.0 | 72.0 |\n| Kanpur | 64.0 | 80.0 |\n| Varanasi | 58.0 | 66.7 |\n| Agra | 62.0 | 74.4 |\n\n### Calculations Required:\n1. Compute price relative for each centre: $R_i = \\frac{P_{i,t}}{P_{i,0}} \\times 100$\n2. Calculate the elementary Jevons Geometric Mean: $I_{\\text{Jevons}} = \\left(\\prod_{i=1}^4 R_i\\right)^{1/4}$\n3. Flag any quotation diverging by > 2.5 standard deviations from the state mean.\n\nUse the statistical calculation engine below to submit and verify your numerical findings.""",
+                activity_question="If 4 price relatives are 120.0, 125.0, 115.0, and 120.0, what is the geometric mean (Jevons Index)?",
+                activity_options_json=json.dumps(["119.95", "125.50", "110.00", "130.20"]),
                 activity_correct_option=0,
-                activity_explanation="Class mean imputation uses the subgroup price trend to estimate missing quotations accurately.",
+                activity_explanation="Jevons Index = (120 * 125 * 115 * 120)^(1/4) = 119.95.",
                 order=1
             )
             db.add(l2_2_1)
         else:
-            l2_2_1.topic = "Class Mean Imputation & Rent Quality Adjustment"
-            l2_2_1.learning_objective = "Apply class-mean imputation algorithms for temporarily unavailable items and semi-annual repeat rent surveys."
-            l2_2_1.source_video_title = "Modelware Systems - Data Quality Frameworks & Imputation"
-            l2_2_1.video_url = "https://www.youtube.com/watch?v=RuNp3l_2dGs"
-            l2_2_1.video_start_time = 240
-            l2_2_1.video_end_time = 1440
-            l2_2_1.duration_minutes = 20
-            l2_2_1.content_type = "video"
+            l2_2_1.title = "Lesson 3: Practical Exercise: Elementary Jevons Price Relative Calculation & Outlier Detection"
+            l2_2_1.topic = "Jevons Price Calculation & Statistical Validation"
+            l2_2_1.learning_objective = "Perform deterministic calculation of Jevons price relatives and flag anomalous price quotation outliers."
+            l2_2_1.content_type = "exercise"
+            l2_2_1.duration_minutes = 25
 
-    # 3. Course 3: Technical Competency (Restructured into Module 1: Comprehensive Masterclass & Module 2: Practice & Labs)
+        l2_2_2 = db.query(Lesson).filter(Lesson.module_id == m2_2.id, Lesson.order == 2).first()
+        if not l2_2_2:
+            l2_2_2 = Lesson(
+                module_id=m2_2.id,
+                title="Lesson 4: Practical Exercise: House Rent Imputation & Vegetable Volatility Policy Brief",
+                topic="Class Mean Imputation & Policy Interpretation",
+                learning_objective="Apply class-mean imputation algorithms for temporarily unavailable items and author a statistical policy brief.",
+                source_video_title="Modelware Systems - Data Quality Frameworks & Imputation",
+                content_type="exercise",
+                duration_minutes=25,
+                video_url="https://www.youtube.com/watch?v=RuNp3l_2dGs",
+                video_start_time=240,
+                video_end_time=1440,
+                content="""# Practical Exercise: House Rent Imputation & Policy Interpretation\n\n### Scenario:\nDuring month *t*, 12% of rural rental survey sample dwellings are temporarily unoccupied due to seasonal harvesting migration. Meanwhile, tomato prices surged by 38% month-on-month.\n\n### Tasks:\n1. Apply repeat-survey chain relative method for rent imputation.\n2. Quantify the contribution of vegetable price volatility to headline CPI headline inflation using item weight $W_{\\text{veg}} = 6.04\\%$.\n3. Draft an executive policy brief recommendation for monetary and supply-side mitigation.\n\nUse the interactive statistical workbench below to verify your calculations.""",
+                activity_question="When a specific vegetable variety is temporarily unavailable in a market, which imputation method is standard in MoSPI compilation?",
+                activity_options_json=json.dumps(["Imputing the price trend from the available varieties in the same sub-group (Class Mean Imputation)", "Setting the price to zero", "Using the highest price recorded across all states", "Deleting the entire commodity from the state basket"]),
+                activity_correct_option=0,
+                activity_explanation="Class mean imputation uses the subgroup price trend to estimate missing quotations accurately.",
+                order=2
+            )
+            db.add(l2_2_2)
+        else:
+            l2_2_2.title = "Lesson 4: Practical Exercise: House Rent Imputation & Vegetable Volatility Policy Brief"
+            l2_2_2.topic = "Class Mean Imputation & Policy Interpretation"
+            l2_2_2.learning_objective = "Apply class-mean imputation algorithms for temporarily unavailable items and author a statistical policy brief."
+            l2_2_2.source_video_title = "Modelware Systems - Data Quality Frameworks & Imputation"
+            l2_2_2.video_url = "https://www.youtube.com/watch?v=RuNp3l_2dGs"
+            l2_2_2.video_start_time = 240
+            l2_2_2.video_end_time = 1440
+            l2_2_2.duration_minutes = 25
+            l2_2_2.content_type = "exercise"
+
+        # Module 3: Assess - Statistical Synthesis & Adaptive Certification Exam
+        m2_3 = db.query(Module).filter(Module.course_id == c2.id, Module.order == 3).first()
+        if not m2_3:
+            m2_3 = Module(course_id=c2.id, title="Module 3: Statistical Synthesis & Adaptive Certification Exam", description="Comprehensive CPI compilation synthesis and calibrated adaptive statistical exam engine.", order=3)
+            db.add(m2_3)
+            db.flush()
+        else:
+            m2_3.title = "Module 3: Statistical Synthesis & Adaptive Certification Exam"
+            m2_3.description = "Comprehensive CPI compilation synthesis and calibrated adaptive statistical exam engine."
+
+        l2_3_1 = db.query(Lesson).filter(Lesson.module_id == m2_3.id, Lesson.order == 1).first()
+        if not l2_3_1:
+            l2_3_1 = Lesson(
+                module_id=m2_3.id,
+                title="Lesson 5: CPI Aggregation Synthesis & Inflation Dynamics",
+                topic="Macroeconomic Aggregation & CPI Synthesis",
+                learning_objective="Synthesize all sub-group indices into national headline CPI (Rural, Urban, Combined) and evaluate base year revisions.",
+                source_video_title=None,
+                content_type="reading",
+                duration_minutes=20,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# CPI Aggregation Synthesis & Inflation Dynamics\n\nReview the overall synthesis of All-India Consumer Price Index compilation before taking the official adaptive certification exam.""",
+                activity_question="In India's Combined CPI, which sector carries higher weight in the 'Food and Beverages' group?",
+                activity_options_json=json.dumps(["CPI Rural (54.18%) compared to CPI Urban (36.29%)", "CPI Urban carrying 75% of total food weight", "Both sectors have identical 50% weights", "Food is excluded from CPI Urban"]),
+                activity_correct_option=0,
+                activity_explanation="Rural consumption patterns allocate a higher proportion of expenditure (54.18%) to Food and Beverages.",
+                order=1
+            )
+            db.add(l2_3_1)
+        else:
+            l2_3_1.title = "Lesson 5: CPI Aggregation Synthesis & Inflation Dynamics"
+            l2_3_1.topic = "Macroeconomic Aggregation & CPI Synthesis"
+            l2_3_1.learning_objective = "Synthesize all sub-group indices into national headline CPI (Rural, Urban, Combined) and evaluate base year revisions."
+            l2_3_1.content_type = "reading"
+            l2_3_1.duration_minutes = 20
+
+        l2_3_2 = db.query(Lesson).filter(Lesson.module_id == m2_3.id, Lesson.order == 2).first()
+        if not l2_3_2:
+            l2_3_2 = Lesson(
+                module_id=m2_3.id,
+                title="Lesson 6: Capstone Assessment: Adaptive MoSPI Statistical Certification Exam",
+                topic="Adaptive Statistical Exam & Competency Calibration",
+                learning_objective="Demonstrate mastery of price relatives, Laspeyres weighting, and official chart interpretation in the adaptive exam engine.",
+                source_video_title=None,
+                content_type="quiz",
+                duration_minutes=30,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Capstone: Adaptive MoSPI Statistical Certification Exam\n\nThis adaptive assessment engine dynamically adjusts question difficulty based on your verified calculations of price relatives, Laspeyres aggregation, and policy data interpretation.\n\nLaunch the Adaptive Statistical Exam below to complete your certification.""",
+                activity_question="What is the primary advantage of the Adaptive Statistical Exam engine?",
+                activity_options_json=json.dumps(["It calibrates question difficulty in real-time to precisely measure demonstrated statistical mastery", "It gives everyone the same score automatically", "It skips calculations completely", "It has no feedback mechanism"]),
+                activity_correct_option=0,
+                activity_explanation="Item Response Theory (IRT) calibrated engines adaptively challenge learners based on response accuracy.",
+                order=2
+            )
+            db.add(l2_3_2)
+        else:
+            l2_3_2.title = "Lesson 6: Capstone Assessment: Adaptive MoSPI Statistical Certification Exam"
+            l2_3_2.topic = "Adaptive Statistical Exam & Competency Calibration"
+            l2_3_2.learning_objective = "Demonstrate mastery of price relatives, Laspeyres weighting, and official chart interpretation in the adaptive exam engine."
+            l2_3_2.content_type = "quiz"
+            l2_3_2.duration_minutes = 30
+
+    # 3. Course 3: Technical Competency (Learn -> Coding Labs -> Pytest Assessment)
     c3 = db.query(Course).filter(Course.title == "Python and Data Cleaning Pipelines for Public Policy").first()
     if c3:
-        # Clean up any legacy Module 3 if present
-        legacy_m3 = db.query(Module).filter(Module.course_id == c3.id, Module.order > 2).all()
-        for lm in legacy_m3:
-            for ll in lm.lessons:
-                db.delete(ll)
-            db.delete(lm)
-        db.flush()
-
-        # Module 1: Masterclass & Foundations
+        # Module 1: Learn - Comprehensive Python & Data Wrangling Masterclass
         m3_1 = db.query(Module).filter(Module.course_id == c3.id, Module.order == 1).first()
         if not m3_1:
             m3_1 = Module(
@@ -320,7 +482,7 @@ def sync_course_curriculum_videos(db: Session):
             m3_1.title = "Module 1: Comprehensive Python & Data Wrangling Masterclass"
             m3_1.description = "Complete masterclass video lecture covering Python microdata data structures, vectorized Pandas operations, missing value imputation, and Pydantic validation."
 
-        # Module 1 - Lesson 1
+        # Module 1 Lessons
         l3_1_1 = db.query(Lesson).filter(Lesson.module_id == m3_1.id, Lesson.order == 1).first()
         if not l3_1_1:
             l3_1_1 = Lesson(
@@ -353,7 +515,6 @@ def sync_course_curriculum_videos(db: Session):
             l3_1_1.duration_minutes = 40
             l3_1_1.content_type = "video"
 
-        # Module 1 - Lesson 2
         l3_1_2 = db.query(Lesson).filter(Lesson.module_id == m3_1.id, Lesson.order == 2).first()
         if not l3_1_2:
             l3_1_2 = Lesson(
@@ -386,7 +547,6 @@ def sync_course_curriculum_videos(db: Session):
             l3_1_2.duration_minutes = 45
             l3_1_2.content_type = "video"
 
-        # Module 1 - Lesson 3
         l3_1_3 = db.query(Lesson).filter(Lesson.module_id == m3_1.id, Lesson.order == 3).first()
         if not l3_1_3:
             l3_1_3 = Lesson(
@@ -419,7 +579,6 @@ def sync_course_curriculum_videos(db: Session):
             l3_1_3.duration_minutes = 40
             l3_1_3.content_type = "video"
 
-        # Module 1 - Lesson 4
         l3_1_4 = db.query(Lesson).filter(Lesson.module_id == m3_1.id, Lesson.order == 4).first()
         if not l3_1_4:
             l3_1_4 = Lesson(
@@ -452,31 +611,30 @@ def sync_course_curriculum_videos(db: Session):
             l3_1_4.duration_minutes = 40
             l3_1_4.content_type = "video"
 
-        # Module 2: Practice, Hands-on Labs & Assessment
+        # Module 2: Practice - Hands-on Coding Labs & Workspaces
         m3_2 = db.query(Module).filter(Module.course_id == c3.id, Module.order == 2).first()
         if not m3_2:
             m3_2 = Module(
                 course_id=c3.id,
-                title="Module 2: Hands-on Practice, Coding Labs & Assessment",
-                description="Interactive Jupyter coding workspaces, automated Pytest assertions, data-wrangling challenges, and final certification exam.",
+                title="Module 2: Practical Coding Labs & Sandbox Execution",
+                description="Interactive Jupyter coding workspaces, automated Pytest assertions, and real-time data cleaning pipelines.",
                 order=2
             )
             db.add(m3_2)
             db.flush()
         else:
-            m3_2.title = "Module 2: Hands-on Practice, Coding Labs & Assessment"
-            m3_2.description = "Interactive Jupyter coding workspaces, automated Pytest assertions, data-wrangling challenges, and final certification exam."
+            m3_2.title = "Module 2: Practical Coding Labs & Sandbox Execution"
+            m3_2.description = "Interactive Jupyter coding workspaces, automated Pytest assertions, and real-time data cleaning pipelines."
 
-        # Module 2 - Lesson 1: Conceptual Quiz
         l3_2_1 = db.query(Lesson).filter(Lesson.module_id == m3_2.id, Lesson.order == 1).first()
         if not l3_2_1:
             l3_2_1 = Lesson(
                 module_id=m3_2.id,
-                title="Lesson 1: Python & Pandas Knowledge Check (Quiz)",
+                title="Lesson 5: Conceptual Quiz: Python & Pandas Knowledge Check",
                 topic="Python & Pandas Conceptual Assessment",
                 learning_objective="Test conceptual mastery of vectorized computations, memory optimization, and data structures.",
                 source_video_title=None,
-                content_type="reading",
+                content_type="quiz",
                 duration_minutes=15,
                 video_url=None,
                 video_start_time=None,
@@ -490,22 +648,17 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l3_2_1)
         else:
-            l3_2_1.title = "Lesson 1: Python & Pandas Knowledge Check (Quiz)"
+            l3_2_1.title = "Lesson 5: Conceptual Quiz: Python & Pandas Knowledge Check"
             l3_2_1.topic = "Python & Pandas Conceptual Assessment"
             l3_2_1.learning_objective = "Test conceptual mastery of vectorized computations, memory optimization, and data structures."
-            l3_2_1.source_video_title = None
-            l3_2_1.video_url = None
-            l3_2_1.video_start_time = None
-            l3_2_1.video_end_time = None
+            l3_2_1.content_type = "quiz"
             l3_2_1.duration_minutes = 15
-            l3_2_1.content_type = "reading"
 
-        # Module 2 - Lesson 2: Hands-on Lab 1
         l3_2_2 = db.query(Lesson).filter(Lesson.module_id == m3_2.id, Lesson.order == 2).first()
         if not l3_2_2:
             l3_2_2 = Lesson(
                 module_id=m3_2.id,
-                title="Lesson 2: Hands-on Lab: Survey Multiplier Scaling & Weight Imputation",
+                title="Lesson 6: Practical Lab: Clean & Transform Government Survey Dataset",
                 topic="Pandas Data Cleaning & Aggregation Pipeline",
                 learning_objective="Write and execute an end-to-end Pandas data cleaning pipeline calculating weighted population mean income in the interactive sandbox.",
                 source_video_title=None,
@@ -514,7 +667,7 @@ def sync_course_curriculum_videos(db: Session):
                 video_url=None,
                 video_start_time=None,
                 video_end_time=None,
-                content="""# Hands-on Lab: Survey Multiplier Scaling & Weight Imputation\n\nIn this executable lab, you will load a survey dataset, sanitize `-1` and `999999` sentinel missing codes, scale the multiplier weights, and calculate weighted population income metrics.\n\n```python\nimport pandas as pd\nimport numpy as np\n\ndef clean_survey_data(df: pd.DataFrame) -> pd.DataFrame:\n    # 1. Convert missing sentinels to NaN\n    df['income'] = df['income'].replace([999999, -1], np.nan)\n    # 2. Scale multiplier weight\n    df['multiplier_scaled'] = df['multiplier'] / 100.0\n    return df\n```\n\nLaunch the lab workspace below to run and test your implementation with live Pytest assertions.""",
+                content="""# Practical Lab: Clean & Transform Government Survey Dataset\n\nIn this executable lab, you will load a survey dataset, sanitize `-1` and `999999` sentinel missing codes, scale the multiplier weights, and calculate weighted population income metrics.\n\n```python\nimport pandas as pd\nimport numpy as np\n\ndef clean_survey_data(df: pd.DataFrame) -> pd.DataFrame:\n    # 1. Convert missing sentinels to NaN\n    df['income'] = df['income'].replace([999999, -1], np.nan)\n    # 2. Scale multiplier weight\n    df['multiplier_scaled'] = df['multiplier'] / 100.0\n    return df\n```\n\nLaunch the lab workspace below to run and test your implementation with live Pytest assertions.""",
                 activity_question="In PLFS survey microdata, what is the role of the multiplier field?",
                 activity_options_json=json.dumps(["It represents the inverse probability weight to project sample observations to the total population", "It multiplies the execution speed of the CPU", "It acts as a random encryption salt", "It has no statistical meaning"]),
                 activity_correct_option=0,
@@ -523,22 +676,17 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l3_2_2)
         else:
-            l3_2_2.title = "Lesson 2: Hands-on Lab: Survey Multiplier Scaling & Weight Imputation"
+            l3_2_2.title = "Lesson 6: Practical Lab: Clean & Transform Government Survey Dataset"
             l3_2_2.topic = "Pandas Data Cleaning & Aggregation Pipeline"
             l3_2_2.learning_objective = "Write and execute an end-to-end Pandas data cleaning pipeline calculating weighted population mean income in the interactive sandbox."
-            l3_2_2.source_video_title = None
-            l3_2_2.video_url = None
-            l3_2_2.video_start_time = None
-            l3_2_2.video_end_time = None
-            l3_2_2.duration_minutes = 30
             l3_2_2.content_type = "lab"
+            l3_2_2.duration_minutes = 30
 
-        # Module 2 - Lesson 3: Hands-on Lab 2
         l3_2_3 = db.query(Lesson).filter(Lesson.module_id == m3_2.id, Lesson.order == 3).first()
         if not l3_2_3:
             l3_2_3 = Lesson(
                 module_id=m3_2.id,
-                title="Lesson 3: Hands-on Lab: Administrative Schema Validation with Pydantic",
+                title="Lesson 7: Practical Lab: Administrative Schema Validation with Pydantic",
                 topic="Pydantic Schema Validation & Exception Handling",
                 learning_objective="Implement and execute Pydantic model validators and regular expression checks on district records in the interactive sandbox.",
                 source_video_title=None,
@@ -547,7 +695,7 @@ def sync_course_curriculum_videos(db: Session):
                 video_url=None,
                 video_start_time=None,
                 video_end_time=None,
-                content="""# Hands-on Lab: Administrative Schema Validation\n\nImplement runtime type and constraint enforcement for government district returns using Pydantic.\n\n```python\nfrom pydantic import BaseModel, Field, field_validator\nimport re\n\nclass DistrictRecord(BaseModel):\n    state_code: int = Field(ge=1, le=38)\n    beneficiary_id: str\n    amount_disbursed: float = Field(ge=0)\n\n    @field_validator('beneficiary_id')\n    @classmethod\n    def check_id_format(cls, v: str) -> str:\n        if not re.match(r'^[A-Z]{2}\\d{8}$', v):\n            raise ValueError('Beneficiary ID must be 2 uppercase letters followed by 8 digits')\n        return v\n```\n\nLaunch the lab workspace below to run and test your schema with live test cases.""",
+                content="""# Practical Lab: Administrative Schema Validation\n\nImplement runtime type and constraint enforcement for government district returns using Pydantic.\n\n```python\nfrom pydantic import BaseModel, Field, field_validator\nimport re\n\nclass DistrictRecord(BaseModel):\n    state_code: int = Field(ge=1, le=38)\n    beneficiary_id: str\n    amount_disbursed: float = Field(ge=0)\n\n    @field_validator('beneficiary_id')\n    @classmethod\n    def check_id_format(cls, v: str) -> str:\n        if not re.match(r'^[A-Z]{2}\\d{8}$', v):\n            raise ValueError('Beneficiary ID must be 2 uppercase letters followed by 8 digits')\n        return v\n```\n\nLaunch the lab workspace below to run and test your schema with live test cases.""",
                 activity_question="Which Pydantic decorator allows custom validation logic on specific attributes?",
                 activity_options_json=json.dumps(["@field_validator", "@check_column", "@assert_valid", "@db_column"]),
                 activity_correct_option=0,
@@ -556,22 +704,17 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l3_2_3)
         else:
-            l3_2_3.title = "Lesson 3: Hands-on Lab: Administrative Schema Validation with Pydantic"
+            l3_2_3.title = "Lesson 7: Practical Lab: Administrative Schema Validation with Pydantic"
             l3_2_3.topic = "Pydantic Schema Validation & Exception Handling"
             l3_2_3.learning_objective = "Implement and execute Pydantic model validators and regular expression checks on district records in the interactive sandbox."
-            l3_2_3.source_video_title = None
-            l3_2_3.video_url = None
-            l3_2_3.video_start_time = None
-            l3_2_3.video_end_time = None
-            l3_2_3.duration_minutes = 30
             l3_2_3.content_type = "lab"
+            l3_2_3.duration_minutes = 30
 
-        # Module 2 - Lesson 4: Hands-on Lab 3
         l3_2_4 = db.query(Lesson).filter(Lesson.module_id == m3_2.id, Lesson.order == 4).first()
         if not l3_2_4:
             l3_2_4 = Lesson(
                 module_id=m3_2.id,
-                title="Lesson 4: Hands-on Lab: Policy Visualizations & Statistical Summaries",
+                title="Lesson 8: Practical Lab: Policy Visualizations & Statistical Summaries",
                 topic="Matplotlib & Seaborn Policy Dashboards",
                 learning_objective="Generate automated policy distribution plots and quartile binning charts for administrative reporting in the interactive sandbox.",
                 source_video_title=None,
@@ -580,7 +723,7 @@ def sync_course_curriculum_videos(db: Session):
                 video_url=None,
                 video_start_time=None,
                 video_end_time=None,
-                content="""# Hands-on Lab: Policy Visualizations\n\nGenerate standardized distribution plots, box plots, and summary metrics for district welfare allocations.\n\n```python\nimport matplotlib.pyplot as plt\nimport seaborn as sns\nimport pandas as pd\n\ndef plot_welfare_distribution(df: pd.DataFrame):\n    fig, ax = plt.subplots(figsize=(10, 6))\n    sns.boxplot(x='district_name', y='disbursed_amount', data=df, ax=ax)\n    ax.set_title('Welfare Disbursement Distribution across Districts')\n    return fig\n```\n\nLaunch the lab workspace below to execute and verify your chart generation code.""",
+                content="""# Practical Lab: Policy Visualizations\n\nGenerate standardized distribution plots, box plots, and summary metrics for district welfare allocations.\n\n```python\nimport matplotlib.pyplot as plt\nimport seaborn as sns\nimport pandas as pd\n\ndef plot_welfare_distribution(df: pd.DataFrame):\n    fig, ax = plt.subplots(figsize=(10, 6))\n    sns.boxplot(x='district_name', y='disbursed_amount', data=df, ax=ax)\n    ax.set_title('Welfare Disbursement Distribution across Districts')\n    return fig\n```\n\nLaunch the lab workspace below to execute and verify your chart generation code.""",
                 activity_question="Which chart is standard for identifying interquartile ranges and outlier values across districts?",
                 activity_options_json=json.dumps(["Box and Whisker Plot (Boxplot)", "Simple Pie Chart", "Radial Gauge", "Network Flow Graph"]),
                 activity_correct_option=0,
@@ -589,122 +732,263 @@ def sync_course_curriculum_videos(db: Session):
             )
             db.add(l3_2_4)
         else:
-            l3_2_4.title = "Lesson 4: Hands-on Lab: Policy Visualizations & Statistical Summaries"
+            l3_2_4.title = "Lesson 8: Practical Lab: Policy Visualizations & Statistical Summaries"
             l3_2_4.topic = "Matplotlib & Seaborn Policy Dashboards"
             l3_2_4.learning_objective = "Generate automated policy distribution plots and quartile binning charts for administrative reporting in the interactive sandbox."
-            l3_2_4.source_video_title = None
-            l3_2_4.video_url = None
-            l3_2_4.video_start_time = None
-            l3_2_4.video_end_time = None
-            l3_2_4.duration_minutes = 30
             l3_2_4.content_type = "lab"
+            l3_2_4.duration_minutes = 30
 
-    # 4. Course 4: Digital Governance
+        # Module 3: Assess - Automated Pytest Certification Exam
+        m3_3 = db.query(Module).filter(Module.course_id == c3.id, Module.order == 3).first()
+        if not m3_3:
+            m3_3 = Module(
+                course_id=c3.id,
+                title="Module 3: Technical Certification & Pytest Assessment",
+                description="Comprehensive public policy data pipeline autograder and final coding certification exam.",
+                order=3
+            )
+            db.add(m3_3)
+            db.flush()
+        else:
+            m3_3.title = "Module 3: Technical Certification & Pytest Assessment"
+            m3_3.description = "Comprehensive public policy data pipeline autograder and final coding certification exam."
+
+        l3_3_1 = db.query(Lesson).filter(Lesson.module_id == m3_3.id, Lesson.order == 1).first()
+        if not l3_3_1:
+            l3_3_1 = Lesson(
+                module_id=m3_3.id,
+                title="Lesson 9: Capstone Assessment: Automated Public Policy Pipeline Autograder",
+                topic="End-to-End Pipeline Autograding",
+                learning_objective="Pass full Pytest suite testing microdata ingestion, weighted aggregation, and Pydantic validation.",
+                source_video_title=None,
+                content_type="quiz",
+                duration_minutes=35,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Capstone Assessment: Public Policy Pipeline Certification\n\nIn this final technical assessment, you will synthesize your knowledge of vectorized computations, sentinel data cleaning, and schema validations.\n\nLaunch the official certification assessment below to complete your course credential.""",
+                activity_question="In an automated CI/CD pipeline for policy microdata, what is the primary role of Pytest suites?",
+                activity_options_json=json.dumps(["Automatically verify data transformations and schema constraints against edge cases before publishing", "Slow down the server deliberately", "Encrypt database passwords", "Delete input files automatically"]),
+                activity_correct_option=0,
+                activity_explanation="Pytest suites automate verification and catch regressions in transformation pipelines.",
+                order=1
+            )
+            db.add(l3_3_1)
+        else:
+            l3_3_1.title = "Lesson 9: Capstone Assessment: Automated Public Policy Pipeline Autograder"
+            l3_3_1.topic = "End-to-End Pipeline Autograding"
+            l3_3_1.learning_objective = "Pass full Pytest suite testing microdata ingestion, weighted aggregation, and Pydantic validation."
+            l3_3_1.content_type = "quiz"
+            l3_3_1.duration_minutes = 35
+
+    # 4. Course 4: Digital Governance (Learn -> CTF -> Scenario Assessment)
     c4 = db.query(Course).filter(Course.title == "Digital Governance, Cyber Defense & Public Digital Architecture").first()
     if c4:
-        dg_video_map = {
-            "Lesson 1: Statutory Mandate of CERT-In & Mandatory 6-Hour Reporting": {
-                "url": "https://www.youtube.com/watch?v=3Hpd_1O5F9o",
-                "start": 120,
-                "end": 1440,
-                "duration": 22,
-                "topic": "CERT-In Statutory Directives & 6-Hour Reporting",
-                "objective": "Comply with Section 70B(6) mandatory 6-hour reporting directives and 180-day log preservation mandates.",
-                "source": "Akber Shaikh - National Cyber Security Directives & Compliance"
-            },
-            "Lesson 2: SOC Authentication Telemetry & Incident Triage": {
-                "url": "https://www.youtube.com/watch?v=v3iUx2SNspY",
-                "start": 1800,
-                "end": 3300,
-                "duration": 25,
-                "topic": "SOC Telemetry & Threat Containment",
-                "objective": "Triage Windows Event 4625/4624 telemetry, isolate infected hosts, and preserve volatile memory under Section 65B.",
-                "source": "WsCube Tech - SOC Telemetry Ingestion & Threat Containment"
-            },
-            "Lesson 1: Obligations of Data Fiduciaries & Significant Data Fiduciaries": {
-                "url": "https://www.youtube.com/watch?v=76fcelayw00",
-                "start": 240,
-                "end": 1680,
-                "duration": 24,
-                "topic": "DPDP Data Fiduciaries & Penalty Schedules",
-                "objective": "Identify legal duties of government Data Fiduciaries and Significant Data Fiduciary compliance requirements.",
-                "source": "Prabh Nair - Data Privacy Legal Frameworks & Governance"
-            },
-            "Lesson 2: Consent Standards, Notice & Citizens' Rights": {
-                "url": "https://www.youtube.com/watch?v=wLlQMNbH7wk",
-                "start": 60,
-                "end": 1260,
-                "duration": 20,
-                "topic": "Consent Standards & Citizen Data Principal Rights",
-                "objective": "Draft valid multilingual pre-consent notices and uphold citizens' rights to access, correction, and erasure.",
-                "source": "Data Privacy - Citizen Consent Architectures & Privacy Rights"
-            },
-            "Lesson 1: Cryptographic Foundations of Class 3 DSC & PKI Hierarchy": {
-                "url": "https://www.youtube.com/watch?v=yUeI4nqvNs8",
-                "start": 0,
-                "end": 900,
-                "duration": 15,
-                "topic": "Root CA of India & Class 3 DSC Hardware Tokens",
-                "objective": "Understand RCAI hierarchy, FIPS 140-2 Level 2 cryptographic hardware tokens, and asymmetric key pairs.",
-                "source": "5 Minutes Engineering - Digital Signatures & PKI Cryptography"
-            },
-            "Lesson 2: e-Office Implementation & Non-Repudiation under Section 65B": {
-                "url": "https://www.youtube.com/watch?v=jbBe4AS5pk0",
-                "start": 300,
-                "end": 1800,
-                "duration": 25,
-                "topic": "e-Office DSC/eSign & Section 65B Admissibility",
-                "objective": "Enforce non-repudiation in electronic secretariat notes and issue Section 65B electronic evidence certificates.",
-                "source": "Prof. Christof Paar - Applied Cryptography & Non-Repudiation"
-            },
-            "Lesson 1: The MeghRaj Architecture & MeitY Empanelment Standards": {
-                "url": "https://www.youtube.com/watch?v=BH7SdE0nX5k",
-                "start": 0,
-                "end": 960,
-                "duration": 16,
-                "topic": "MeghRaj GI Cloud Architecture & STQC Audits",
-                "objective": "Evaluate National Cloud and empaneled commercial cloud service providers against MeitY STQC audit standards.",
-                "source": "Learning Shots - GI Cloud MeghRaj Sovereign Architecture"
-            },
-            "Lesson 2: Sovereign Data Localization, Tenant Isolation & Audits": {
-                "url": "https://www.youtube.com/watch?v=70oYrSnRgoI",
-                "start": 600,
-                "end": 1980,
-                "duration": 23,
-                "topic": "Sovereign Data Localization & Virtual Isolation",
-                "objective": "Architect zero co-location Government Community Clouds with HSM customer-managed encryption.",
-                "source": "Apna College - Cloud Architecture, Isolation & Security"
-            },
-            "Lesson 1: Foundational DPI: Aadhaar Authentication & DigiLocker Gateways": {
-                "url": "https://www.youtube.com/watch?v=YyXAxDD4wuQ",
-                "start": 180,
-                "end": 1500,
-                "duration": 22,
-                "topic": "Identity & Document Layer: Aadhaar & DigiLocker",
-                "objective": "Integrate Aadhaar e-KYC authentication and DigiLocker URI document pushing under Rule 9A.",
-                "source": "Vision IAS - Digital Public Infrastructure & India Stack"
-            },
-            "Lesson 2: Public Financial Management (PFMS DBT) & API Setu Interoperability": {
-                "url": "https://www.youtube.com/watch?v=aL5vxyHzr1w",
-                "start": 120,
-                "end": 1380,
-                "duration": 21,
-                "topic": "Payments & Open Data Exchange: PFMS TSA & API Setu",
-                "objective": "Execute direct benefit transfers via PFMS Treasury Single Account and integrate API Setu standardized endpoints.",
-                "source": "ForumIAS - India's DPI Revolution & Direct Benefit Transfer"
-            },
-        }
-        for l in db.query(Lesson).join(Module).filter(Module.course_id == c4.id).all():
-            if l.title in dg_video_map:
-                meta = dg_video_map[l.title]
-                l.video_url = meta["url"]
-                l.video_start_time = meta["start"]
-                l.video_end_time = meta["end"]
-                l.duration_minutes = meta["duration"]
-                l.topic = meta["topic"]
-                l.learning_objective = meta["objective"]
-                l.source_video_title = meta["source"]
-                l.content_type = "video"
+        # Module 1: Learn - Statutory Mandate & National Cyber Defense Frameworks
+        m4_1 = db.query(Module).filter(Module.course_id == c4.id, Module.order == 1).first()
+        if not m4_1:
+            m4_1 = Module(course_id=c4.id, title="Module 1: Statutory Mandate & National Cyber Defense Frameworks", description="CERT-In directives, Section 70B 6-hour reporting, and SOC authentication telemetry triage.", order=1)
+            db.add(m4_1)
+            db.flush()
+        else:
+            m4_1.title = "Module 1: Statutory Mandate & National Cyber Defense Frameworks"
+            m4_1.description = "CERT-In directives, Section 70B 6-hour reporting, and SOC authentication telemetry triage."
+
+        l4_1_1 = db.query(Lesson).filter(Lesson.module_id == m4_1.id, Lesson.order == 1).first()
+        if not l4_1_1:
+            l4_1_1 = Lesson(
+                module_id=m4_1.id,
+                title="Lesson 1: Statutory Mandate of CERT-In & Mandatory 6-Hour Reporting",
+                topic="CERT-In Statutory Directives & 6-Hour Reporting",
+                learning_objective="Comply with Section 70B(6) mandatory 6-hour reporting directives and 180-day log preservation mandates.",
+                source_video_title="Akber Shaikh - National Cyber Security Directives & Compliance",
+                content_type="video",
+                duration_minutes=22,
+                video_url="https://www.youtube.com/watch?v=3Hpd_1O5F9o",
+                video_start_time=120,
+                video_end_time=1440,
+                content="""# Statutory Mandate of CERT-In & Mandatory 6-Hour Reporting\n\nUnder Section 70B(6) of the Information Technology Act 2000 and the CERT-In Directions 2022, all government ministries and critical infrastructure must report cybersecurity incidents within 6 hours.""",
+                activity_question="Under CERT-In Directions 2022, what is the statutory deadline for reporting a cybersecurity incident?",
+                activity_options_json=json.dumps(["Within 6 hours of noticing or being brought to notice of the incident", "Within 30 calendar days", "At the end of the financial quarter", "Only after complete system rebuild"]),
+                activity_correct_option=0,
+                activity_explanation="Section 70B directives strictly mandate incident reporting to CERT-In within 6 hours.",
+                order=1
+            )
+            db.add(l4_1_1)
+        else:
+            l4_1_1.title = "Lesson 1: Statutory Mandate of CERT-In & Mandatory 6-Hour Reporting"
+            l4_1_1.topic = "CERT-In Statutory Directives & 6-Hour Reporting"
+            l4_1_1.learning_objective = "Comply with Section 70B(6) mandatory 6-hour reporting directives and 180-day log preservation mandates."
+            l4_1_1.source_video_title = "Akber Shaikh - National Cyber Security Directives & Compliance"
+            l4_1_1.video_url = "https://www.youtube.com/watch?v=3Hpd_1O5F9o"
+            l4_1_1.video_start_time = 120
+            l4_1_1.video_end_time = 1440
+            l4_1_1.duration_minutes = 22
+            l4_1_1.content_type = "video"
+
+        l4_1_2 = db.query(Lesson).filter(Lesson.module_id == m4_1.id, Lesson.order == 2).first()
+        if not l4_1_2:
+            l4_1_2 = Lesson(
+                module_id=m4_1.id,
+                title="Lesson 2: SOC Authentication Telemetry & Incident Triage",
+                topic="SOC Telemetry & Threat Containment",
+                learning_objective="Triage Windows Event 4625/4624 telemetry, isolate infected hosts, and preserve volatile memory under Section 65B.",
+                source_video_title="WsCube Tech - SOC Telemetry Ingestion & Threat Containment",
+                content_type="video",
+                duration_minutes=25,
+                video_url="https://www.youtube.com/watch?v=v3iUx2SNspY",
+                video_start_time=1800,
+                video_end_time=3300,
+                content="""# SOC Authentication Telemetry & Incident Triage\n\nSOC analysts monitor authentication events (Event ID 4625 failed logins, 4624 successful logins) to spot brute-force attacks and lateral movement.""",
+                activity_question="In Windows Security Event Logs, which Event ID signals a failed logon attempt?",
+                activity_options_json=json.dumps(["Event ID 4625", "Event ID 4624", "Event ID 7036", "Event ID 1102"]),
+                activity_correct_option=0,
+                activity_explanation="Windows Event ID 4625 records an account that failed to log on.",
+                order=2
+            )
+            db.add(l4_1_2)
+        else:
+            l4_1_2.title = "Lesson 2: SOC Authentication Telemetry & Incident Triage"
+            l4_1_2.topic = "SOC Telemetry & Threat Containment"
+            l4_1_2.learning_objective = "Triage Windows Event 4625/4624 telemetry, isolate infected hosts, and preserve volatile memory under Section 65B."
+            l4_1_2.source_video_title = "WsCube Tech - SOC Telemetry Ingestion & Threat Containment"
+            l4_1_2.video_url = "https://www.youtube.com/watch?v=v3iUx2SNspY"
+            l4_1_2.video_start_time = 1800
+            l4_1_2.video_end_time = 3300
+            l4_1_2.duration_minutes = 25
+            l4_1_2.content_type = "video"
+
+        # Module 2: Practice - DFIR Cyber Defense CTF & Digital Evidence Challenges
+        m4_2 = db.query(Module).filter(Module.course_id == c4.id, Module.order == 2).first()
+        if not m4_2:
+            m4_2 = Module(course_id=c4.id, title="Module 2: Practical Cyber Defense CTF & Digital Forensics", description="Hands-on DFIR investigation challenges, Windows event log forensic triage, and PKI digital signature verification.", order=2)
+            db.add(m4_2)
+            db.flush()
+        else:
+            m4_2.title = "Module 2: Practical Cyber Defense CTF & Digital Forensics"
+            m4_2.description = "Hands-on DFIR investigation challenges, Windows event log forensic triage, and PKI digital signature verification."
+
+        l4_2_1 = db.query(Lesson).filter(Lesson.module_id == m4_2.id, Lesson.order == 1).first()
+        if not l4_2_1:
+            l4_2_1 = Lesson(
+                module_id=m4_2.id,
+                title="Lesson 3: Practical CTF: Windows Event Log Triage & Brute-Force Detection",
+                topic="DFIR CTF Challenge: Auth Log Triage",
+                learning_objective="Investigate simulated security event logs, identify source IP of brute-force attacker, and extract the incident flag.",
+                source_video_title=None,
+                content_type="ctf",
+                duration_minutes=30,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Practical CTF: Windows Event Log Triage\n\n### Challenge Description\nA state portal domain controller experienced an authentication spike between 02:14:00 and 02:22:00 IST. You are tasked as the CERT-In incident responder to inspect the telemetry logs.\n\n### Target & Environment:\n- Telemetry source: `/var/log/suricata/eve.json` & Windows Security Event Logs.\n- Evidence item: 1,420 authentication events recorded in UTC.\n\n### CTF Instructions:\n1. Triage failed logon attempts (Event ID 4625).\n2. Identify the compromised service account and source IP address.\n3. Locate the hidden flag in the format `FLAG{...}` and submit for verification.\n\nLaunch the Cyber Defense CTF Sandbox below to begin your investigation.""",
+                activity_question="What is the standard forensic format required when preserving digital evidence under Section 65B?",
+                activity_options_json=json.dumps(["Bit-stream raw forensic image with cryptographic SHA-256 hash certificate", "Screenshot saved as JPEG", "Copy-pasted text file without timestamps", "Printout of the screen"]),
+                activity_correct_option=0,
+                activity_explanation="Section 65B requires verifiable bit-stream preservation with cryptographic hash validation.",
+                order=1
+            )
+            db.add(l4_2_1)
+        else:
+            l4_2_1.title = "Lesson 3: Practical CTF: Windows Event Log Triage & Brute-Force Detection"
+            l4_2_1.topic = "DFIR CTF Challenge: Auth Log Triage"
+            l4_2_1.learning_objective = "Investigate simulated security event logs, identify source IP of brute-force attacker, and extract the incident flag."
+            l4_2_1.content_type = "ctf"
+            l4_2_1.duration_minutes = 30
+
+        l4_2_2 = db.query(Lesson).filter(Lesson.module_id == m4_2.id, Lesson.order == 2).first()
+        if not l4_2_2:
+            l4_2_2 = Lesson(
+                module_id=m4_2.id,
+                title="Lesson 4: Practical CTF: Class 3 DSC & PKI Tamper Verification",
+                topic="DFIR CTF Challenge: PKI & Cryptographic Verification",
+                learning_objective="Verify cryptographic certificate chain of trust, inspect revoked CRL endpoints, and identify tampered PDF file digest.",
+                source_video_title=None,
+                content_type="ctf",
+                duration_minutes=30,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Practical CTF: Class 3 DSC & PKI Tamper Verification\n\n### Challenge Description\nAn e-Office sanction order approving a 50 Crore rural road project was contested. You must inspect the PDF signature dictionary, OCSP validation response, and RCAI Root CA trust anchor.\n\n### Instructions:\n1. Validate the cryptographic hash chain of the digital signature.\n2. Verify the CRL (Certificate Revocation List) status at time of signing.\n3. Extract the validation flag to confirm non-repudiation.\n\nLaunch the Cyber Defense CTF Sandbox below to inspect the PKI artifacts.""",
+                activity_question="In India's PKI hierarchy under CCA, which entity signs the certificates of licensed Certifying Authorities (CAs)?",
+                activity_options_json=json.dumps(["Root Certifying Authority of India (RCAI)", "Local District Magistrate", "State Police Cyber Cell", "NIC Helpdesk"]),
+                activity_correct_option=0,
+                activity_explanation="The Root Certifying Authority of India (RCAI), operated by the CCA, acts as the root trust anchor.",
+                order=2
+            )
+            db.add(l4_2_2)
+        else:
+            l4_2_2.title = "Lesson 4: Practical CTF: Class 3 DSC & PKI Tamper Verification"
+            l4_2_2.topic = "DFIR CTF Challenge: PKI & Cryptographic Verification"
+            l4_2_2.learning_objective = "Verify cryptographic certificate chain of trust, inspect revoked CRL endpoints, and identify tampered PDF file digest."
+            l4_2_2.content_type = "ctf"
+            l4_2_2.duration_minutes = 30
+
+        # Module 3: Assess - Tabletop Crisis Simulations & Governance Assessment
+        m4_3 = db.query(Module).filter(Module.course_id == c4.id, Module.order == 3).first()
+        if not m4_3:
+            m4_3 = Module(course_id=c4.id, title="Module 3: Tabletop Crisis Simulations & Governance Assessment", description="6-hour ransomware tabletop incident injects, statutory CERT-In reporting, and final architecture assessment.", order=3)
+            db.add(m4_3)
+            db.flush()
+        else:
+            m4_3.title = "Module 3: Tabletop Crisis Simulations & Governance Assessment"
+            m4_3.description = "6-hour ransomware tabletop incident injects, statutory CERT-In reporting, and final architecture assessment."
+
+        l4_3_1 = db.query(Lesson).filter(Lesson.module_id == m4_3.id, Lesson.order == 1).first()
+        if not l4_3_1:
+            l4_3_1 = Lesson(
+                module_id=m4_3.id,
+                title="Lesson 5: Practical Tabletop Scenario: 6-Hour Ransomware Crisis & Section 70B Injects",
+                topic="Tabletop Incident Simulation & CERT-In Compliance",
+                learning_objective="Navigate a simulated ransomware crisis under ticking 6-hour statutory clock, dispatching CERT-In notice and isolating critical VLANs.",
+                source_video_title=None,
+                content_type="scenario",
+                duration_minutes=35,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Practical Tabletop Scenario: 6-Hour Ransomware Crisis\n\n### Simulation Background\nAt 08:30 IST on a working Monday, the core database of a state treasury system displays ransom notes. You are designated as the Chief Information Security Officer (CISO) and Incident Commander.\n\n### Scenario Objectives:\n1. Triage the incident severity and order immediate VLAN network segmentation.\n2. Prepare and submit the statutory Annexure-I CERT-In 6-Hour Incident Notification Form.\n3. Manage communication with state leadership and ensure public services are restored via sovereign cloud backups.\n\nLaunch the Tabletop Crisis Simulation below to experience live timed incident injects.""",
+                activity_question="During an active ransomware event on government infrastructure, what is the first containment priority?",
+                activity_options_json=json.dumps(["Isolating affected VLANs/hosts from the network to halt lateral spread while preserving RAM for forensics", "Paying the extortion demand immediately", "Shutting down the power grid", "Deleting all audit logs"]),
+                activity_correct_option=0,
+                activity_explanation="Network segmentation halts lateral malware spread while preserving memory state for investigation.",
+                order=1
+            )
+            db.add(l4_3_1)
+        else:
+            l4_3_1.title = "Lesson 5: Practical Tabletop Scenario: 6-Hour Ransomware Crisis & Section 70B Injects"
+            l4_3_1.topic = "Tabletop Incident Simulation & CERT-In Compliance"
+            l4_3_1.learning_objective = "Navigate a simulated ransomware crisis under ticking 6-hour statutory clock, dispatching CERT-In notice and isolating critical VLANs."
+            l4_3_1.content_type = "scenario"
+            l4_3_1.duration_minutes = 35
+
+        l4_3_2 = db.query(Lesson).filter(Lesson.module_id == m4_3.id, Lesson.order == 2).first()
+        if not l4_3_2:
+            l4_3_2 = Lesson(
+                module_id=m4_3.id,
+                title="Lesson 6: Final Digital Governance & DPI Certification Assessment",
+                topic="National DPI & Sovereign Architecture Certification",
+                learning_objective="Demonstrate comprehensive knowledge of DPI stacks, Aadhaar e-KYC, API Setu, and MeghRaj GI-Cloud architecture.",
+                source_video_title=None,
+                content_type="quiz",
+                duration_minutes=30,
+                video_url=None,
+                video_start_time=None,
+                video_end_time=None,
+                content="""# Final Digital Governance & DPI Certification Assessment\n\nSynthesize your mastery of sovereign cloud architecture (MeghRaj), DPDP data fiduciary compliance, CERT-In cybersecurity directives, and national DPI integrations (Aadhaar, DigiLocker, API Setu).\n\nLaunch the final certification assessment below to complete your course qualification.""",
+                activity_question="Which initiative provides India's unified gateway for sovereign API sharing between government departments?",
+                activity_options_json=json.dumps(["API Setu", "Public Torrent Gateway", "Commercial FTP Server", "Local LAN Cable"]),
+                activity_correct_option=0,
+                activity_explanation="API Setu is MeitY's platform for secure, standardized data exchange across government entities.",
+                order=2
+            )
+            db.add(l4_3_2)
+        else:
+            l4_3_2.title = "Lesson 6: Final Digital Governance & DPI Certification Assessment"
+            l4_3_2.topic = "National DPI & Sovereign Architecture Certification"
+            l4_3_2.learning_objective = "Demonstrate comprehensive knowledge of DPI stacks, Aadhaar e-KYC, API Setu, and MeghRaj GI-Cloud architecture."
+            l4_3_2.content_type = "quiz"
+            l4_3_2.duration_minutes = 30
 
     db.commit()
 

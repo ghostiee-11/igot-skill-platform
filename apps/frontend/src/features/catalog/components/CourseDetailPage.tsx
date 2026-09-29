@@ -23,6 +23,7 @@ import {
   Play,
   Award,
   Code2,
+  FileCheck2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -235,6 +236,35 @@ export default function CourseDetailPage() {
             {getCourseOverview()}
           </p>
 
+          {/* Practical Learning Journey Pipeline Banner */}
+          <div className="mt-5 p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-[#1E3A8A] to-slate-900 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-teal-300 shrink-0" />
+              <span className="text-xs font-bold uppercase tracking-wider text-teal-200">
+                Course Learning & Practical Assessment Flow:
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+              <span className="px-2.5 py-1 rounded-lg bg-white/10 text-white border border-white/10">
+                1. Learn (Video Masterclass)
+              </span>
+              <span className="text-teal-300 font-bold">→</span>
+              <span className="px-2.5 py-1 rounded-lg bg-teal-500/20 text-teal-200 border border-teal-400/30">
+                {isTechnicalCourse && "2. Practice (Python Coding Labs)"}
+                {isStatisticalCourse && "2. Practice (Data Interpretation Exercises)"}
+                {isDigitalGovCourse && "2. Practice (DFIR Cyber CTF)"}
+                {isBehaviouralCourse && "2. Practice (Case Study Inquiries)"}
+              </span>
+              <span className="text-teal-300 font-bold">→</span>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-200 border border-blue-400/30">
+                {isTechnicalCourse && "3. Assess (Pytest Autograder)"}
+                {isStatisticalCourse && "3. Assess (Adaptive Exam Engine)"}
+                {isDigitalGovCourse && "3. Assess (Tabletop Crisis Scenarios)"}
+                {isBehaviouralCourse && "3. Assess (AI Live Oral Board)"}
+              </span>
+            </div>
+          </div>
+
           {/* Instructor & Accreditation Info Strip */}
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-y border-slate-100 text-xs">
             <div>
@@ -320,16 +350,28 @@ export default function CourseDetailPage() {
                 </a>
               )}
               {isBehaviouralCourse && (
-                <a href={`/behavioural/interview?courseId=${course.id}`}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs rounded-xl border-teal-300 bg-teal-50/60 text-[#0D9488] hover:bg-teal-100/60 cursor-pointer flex items-center gap-1.5 font-semibold"
-                  >
-                    <Video className="h-3.5 w-3.5 text-[#0D9488]" />
-                    AI Oral Board
-                  </Button>
-                </a>
+                <>
+                  <a href={`/behavioural/cases?courseId=${course.id}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs rounded-xl border-teal-300 bg-teal-50/60 text-[#0D9488] hover:bg-teal-100/60 cursor-pointer flex items-center gap-1.5 font-semibold"
+                    >
+                      <FileCheck2 className="h-3.5 w-3.5 text-[#0D9488]" />
+                      Rule 14 Case Inquiries
+                    </Button>
+                  </a>
+                  <a href={`/behavioural/interview?courseId=${course.id}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs rounded-xl border-teal-300 bg-teal-50/60 text-[#0D9488] hover:bg-teal-100/60 cursor-pointer flex items-center gap-1.5 font-semibold"
+                    >
+                      <Video className="h-3.5 w-3.5 text-[#0D9488]" />
+                      AI Oral Board
+                    </Button>
+                  </a>
+                </>
               )}
               {isStatisticalCourse && (
                 <a href={`/statistical/exam?courseId=${course.id}`}>
@@ -344,7 +386,7 @@ export default function CourseDetailPage() {
                 </a>
               )}
               {isTechnicalCourse && (
-                <a href="/labs">
+                <a href={`/labs/python-pandas-transform-001?courseId=${course.id}`}>
                   <Button
                     variant="outline"
                     size="sm"
@@ -357,17 +399,17 @@ export default function CourseDetailPage() {
               )}
               {isDigitalGovCourse && (
                 <>
-                  <a href="/digital-governance/sandbox">
+                  <a href={`/digital-governance/sandbox?courseId=${course.id}`}>
                     <Button
                       variant="outline"
                       size="sm"
                       className="text-xs rounded-xl border-blue-300 bg-blue-50/60 text-[#1E3A8A] hover:bg-blue-100/60 cursor-pointer flex items-center gap-1.5 font-semibold"
                     >
                       <ShieldAlert className="h-3.5 w-3.5 text-[#1E3A8A]" />
-                      Cyber Defense Sandbox
+                      Cyber Defense CTF
                     </Button>
                   </a>
-                  <a href="/digital-governance/scenarios">
+                  <a href={`/digital-governance/scenarios?courseId=${course.id}`}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -439,39 +481,95 @@ export default function CourseDetailPage() {
 
                         {isExpanded && mod.lessons && (
                           <div className="p-2 divide-y divide-slate-100 bg-white">
-                            {mod.lessons.map((lesson) => (
-                              <a
-                                key={lesson.id}
-                                href={`/learn/${course.id}?lessonId=${lesson.id}`}
-                                className="flex items-center justify-between py-3 px-3 hover:bg-blue-50/60 rounded-lg text-xs group cursor-pointer transition-colors"
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  {lesson.content_type === "reading" && (
-                                    <FileText className="h-3.5 w-3.5 text-blue-600" />
-                                  )}
-                                  {lesson.content_type === "video" && (
-                                    <Video className="h-3.5 w-3.5 text-amber-600" />
-                                  )}
-                                  {lesson.content_type === "lab" && (
-                                    <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
-                                  )}
-                                  <span className="text-slate-800 font-semibold group-hover:text-[#1E3A8A] transition-colors">
-                                    {lesson.title}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-500">
-                                  {lesson.has_activity && (
-                                    <span className="text-[10px] bg-blue-50 text-[#1E3A8A] font-bold px-2 py-0.5 rounded border border-blue-200">
-                                      {t("course.includesPractice")}
+                            {mod.lessons.map((lesson) => {
+                              const cType = lesson.content_type || "video";
+                              return (
+                                <a
+                                  key={lesson.id}
+                                  href={`/learn/${course.id}?lessonId=${lesson.id}`}
+                                  className="flex items-center justify-between py-3 px-3 hover:bg-blue-50/60 rounded-lg text-xs group cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    {cType === "video" && (
+                                      <Video className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                    )}
+                                    {cType === "lab" && (
+                                      <FlaskConical className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    )}
+                                    {cType === "exercise" && (
+                                      <Brain className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                    )}
+                                    {cType === "ctf" && (
+                                      <ShieldAlert className="h-3.5 w-3.5 text-[#1E3A8A] shrink-0" />
+                                    )}
+                                    {cType === "scenario" && (
+                                      <Scale className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                    )}
+                                    {cType === "case_study" && (
+                                      <FileCheck2 className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                                    )}
+                                    {cType === "interview" && (
+                                      <Video className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                                    )}
+                                    {cType === "quiz" && (
+                                      <Award className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                                    )}
+                                    {cType === "reading" && (
+                                      <FileText className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                    )}
+                                    <span className="text-slate-800 font-semibold group-hover:text-[#1E3A8A] transition-colors">
+                                      {lesson.title}
                                     </span>
-                                  )}
-                                  <span className="text-slate-400 text-[11px] font-medium">
-                                    {lesson.duration_minutes}m
-                                  </span>
-                                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#1E3A8A] group-hover:translate-x-0.5 transition-all" />
-                                </div>
-                              </a>
-                            ))}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-slate-500">
+                                    {cType === "lab" && (
+                                      <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                                        Coding Lab
+                                      </span>
+                                    )}
+                                    {cType === "exercise" && (
+                                      <span className="text-[10px] bg-indigo-50 text-indigo-800 font-bold px-2 py-0.5 rounded border border-indigo-200">
+                                        Data Exercise
+                                      </span>
+                                    )}
+                                    {cType === "ctf" && (
+                                      <span className="text-[10px] bg-sky-50 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-200">
+                                        Cyber CTF
+                                      </span>
+                                    )}
+                                    {cType === "scenario" && (
+                                      <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
+                                        Crisis Scenario
+                                      </span>
+                                    )}
+                                    {cType === "case_study" && (
+                                      <span className="text-[10px] bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded border border-teal-200">
+                                        Case Inquiry
+                                      </span>
+                                    )}
+                                    {cType === "interview" && (
+                                      <span className="text-[10px] bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded border border-teal-200">
+                                        Oral Board
+                                      </span>
+                                    )}
+                                    {cType === "quiz" && (
+                                      <span className="text-[10px] bg-purple-50 text-purple-800 font-bold px-2 py-0.5 rounded border border-purple-200">
+                                        Assessment
+                                      </span>
+                                    )}
+                                    {lesson.has_activity && cType === "video" && (
+                                      <span className="text-[10px] bg-blue-50 text-[#1E3A8A] font-bold px-2 py-0.5 rounded border border-blue-200">
+                                        {t("course.includesPractice")}
+                                      </span>
+                                    )}
+                                    <span className="text-slate-400 text-[11px] font-medium">
+                                      {lesson.duration_minutes}m
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#1E3A8A] group-hover:translate-x-0.5 transition-all" />
+                                  </div>
+                                </a>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -722,12 +820,12 @@ export default function CourseDetailPage() {
                     </p>
                     <div className="space-y-2 pt-1">
                       <a
-                        href="/labs/1002"
+                        href={`/labs/python-pandas-transform-001?courseId=${course.id}`}
                         className="w-full flex items-center justify-between p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:border-emerald-700 hover:shadow-xs transition-all font-semibold text-emerald-900 text-xs group"
                       >
                         <span className="flex items-center gap-2">
                           <FlaskConical className="h-3.5 w-3.5 text-emerald-700" />
-                          Launch Pandas Pipeline Lab (#1002)
+                          Launch Pandas Pipeline Lab
                         </span>
                         <ArrowRight className="h-3.5 w-3.5 text-emerald-700 group-hover:translate-x-0.5 transition-all" />
                       </a>

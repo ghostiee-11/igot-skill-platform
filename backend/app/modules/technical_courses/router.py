@@ -38,34 +38,127 @@ router = APIRouter(prefix="/technical-courses", tags=["technical-courses"])
 logger = logging.getLogger("technical_courses.lab_assistant")
 
 
-def _lab_assistant_context(lab_id: int, db: Session) -> Dict[str, Any]:
-    lab = db.query(TechnicalGeneratedLab).filter(TechnicalGeneratedLab.id == lab_id).first()
-    if lab:
-        return {
-            "title": lab.title,
-            "objective": lab.objective,
-            "instructions": lab.instructions,
-            "constraints": json.loads(lab.constraints_json) if lab.constraints_json else [],
-            "starter_code": lab.starter_code,
-        }
+def _format_db_lab(lab: TechnicalGeneratedLab, db: Session) -> Dict[str, Any]:
+    solution = db.query(TechnicalLabSolution).filter(TechnicalLabSolution.lab_id == lab.id).first()
+    val_records = db.query(TechnicalLabValidationResult).filter(
+        TechnicalLabValidationResult.lab_id == lab.id
+    ).order_by(TechnicalLabValidationResult.validated_at.desc()).all()
 
-    if lab_id >= 1000:
-        from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
+    test_cases_raw = json.loads(lab.test_cases_json) if lab.test_cases_json else []
+    constraints_raw = json.loads(lab.constraints_json) if lab.constraints_json else []
 
-        index = lab_id - 1001
-        if 0 <= index < len(BUILTIN_LAB_TEMPLATES):
-            template = BUILTIN_LAB_TEMPLATES[index]
-            return {
-                "title": template.title,
-                "objective": f"Master {template.skill} in practical public administration data workflows.",
-                "instructions": template.instructions_template.format(
-                    objective=f"Implement and validate {template.title}",
-                    function_name=template.tags[0] if template.tags else "process_solution",
-                ),
-                "constraints": template.constraints,
-                "starter_code": template.starter_code_template,
-            }
-    raise HTTPException(status_code=404, detail="Lab not found")
+    validation_history = []
+    for vr in val_records:
+        test_summary = json.loads(vr.test_summary_json) if vr.test_summary_json else []
+        validation_history.append({
+            "id": vr.id,
+            "is_valid": vr.is_valid,
+            "sandbox_type": vr.sandbox_type,
+            "exit_code": vr.exit_code,
+            "execution_time_ms": vr.execution_time_ms,
+            "stdout": vr.stdout,
+            "stderr": vr.stderr,
+            "test_summary": test_summary,
+            "error_message": vr.error_message,
+            "validated_at": vr.validated_at.isoformat() if vr.validated_at else None
+        })
+
+    return {
+        "id": lab.id,
+        "template_id": lab.template_id,
+        "title": lab.title,
+        "objective": lab.objective,
+        "language": lab.language,
+        "difficulty": lab.difficulty,
+        "status": lab.status,
+        "instructions": lab.instructions,
+        "starter_code": lab.starter_code,
+        "constraints": constraints_raw,
+        "test_cases": test_cases_raw,
+        "expected_behavior": lab.expected_behavior,
+        "solution": {
+            "id": solution.id,
+            "reference_code": solution.reference_code,
+            "explanation": solution.explanation
+        } if solution else None,
+        "latest_validation": validation_history[0] if validation_history else None,
+        "validation_history": validation_history,
+        "created_at": lab.created_at.isoformat() if lab.created_at else None
+    }
+
+
+def _format_template_lab(tmpl, numeric_id: int) -> Dict[str, Any]:
+    return {
+        "id": numeric_id,
+        "template_id": tmpl.id,
+        "title": tmpl.title,
+        "objective": f"Master {tmpl.skill} in practical public administration data workflows.",
+        "language": tmpl.language,
+        "difficulty": tmpl.difficulty,
+        "status": "validated",
+        "instructions": tmpl.instructions_template.format(
+            objective=f"Implement and validate {tmpl.title}",
+            function_name=tmpl.tags[0] if tmpl.tags else "process_solution"
+        ),
+        "starter_code": tmpl.starter_code_template,
+        "constraints": tmpl.constraints,
+        "test_cases": [tc.model_dump() if hasattr(tc, "model_dump") else tc for tc in tmpl.test_cases_template],
+        "expected_behavior": "Return structured outputs satisfying test assertions.",
+        "solution": {
+            "id": 9999,
+            "reference_code": tmpl.solution_template,
+            "explanation": "Official reference implementation adhering to template test harness."
+        },
+        "latest_validation": None,
+        "validation_history": [],
+        "created_at": None
+    }
+
+
+def _resolve_lab_item(lab_identifier: Any, db: Session) -> Dict[str, Any]:
+    from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
+
+    lab_str = str(lab_identifier).strip()
+
+    # 1. Numeric ID lookup
+    if lab_str.isdigit():
+        num_id = int(lab_str)
+        lab = db.query(TechnicalGeneratedLab).filter(TechnicalGeneratedLab.id == num_id).first()
+        if lab:
+            return _format_db_lab(lab, db)
+        if num_id >= 1000:
+            tmpl_idx = num_id - 1001
+            if 0 <= tmpl_idx < len(BUILTIN_LAB_TEMPLATES):
+                return _format_template_lab(BUILTIN_LAB_TEMPLATES[tmpl_idx], num_id)
+
+    # 2. Exact template slug match
+    for idx, tmpl in enumerate(BUILTIN_LAB_TEMPLATES):
+        if tmpl.id.lower() == lab_str.lower():
+            return _format_template_lab(tmpl, 1001 + idx)
+
+    # 3. DB template_id match
+    lab_by_tmpl = db.query(TechnicalGeneratedLab).filter(TechnicalGeneratedLab.template_id == lab_str).first()
+    if lab_by_tmpl:
+        return _format_db_lab(lab_by_tmpl, db)
+
+    # 4. Fuzzy / partial slug match
+    clean_slug = lab_str.lower().replace("_", "-")
+    for idx, tmpl in enumerate(BUILTIN_LAB_TEMPLATES):
+        if clean_slug in tmpl.id.lower() or tmpl.id.lower() in clean_slug:
+            return _format_template_lab(tmpl, 1001 + idx)
+
+    raise HTTPException(status_code=404, detail=f"Lab '{lab_str}' not found")
+
+
+def _lab_assistant_context(lab_id: Any, db: Session) -> Dict[str, Any]:
+    resolved = _resolve_lab_item(lab_id, db)
+    return {
+        "title": resolved["title"],
+        "objective": resolved["objective"],
+        "instructions": resolved["instructions"],
+        "constraints": resolved["constraints"],
+        "starter_code": resolved["starter_code"],
+    }
 
 
 def _safe_coaching_fallback(question: str, output: Optional[str]) -> str:
@@ -169,18 +262,30 @@ def generate_lab_from_template(
 # 7. Reference Solution Generation
 @router.post("/labs/{lab_id}/solution", response_model=SolutionGenerationResponse)
 def generate_solution_for_lab(
-    lab_id: int,
+    lab_id: str,
     db: Session = Depends(get_db)
 ):
     """
-    Generates candidate reference solution code for a generated lab.
+    Generates candidate reference solution code for a generated lab or built-in template.
     Note: Code is marked untrusted until sandbox validation passes.
     """
     try:
+        resolved = _resolve_lab_item(lab_id, db)
+        numeric_id = resolved["id"]
+        if numeric_id >= 1000 and resolved.get("solution"):
+            return SolutionGenerationResponse(
+                solution_id=resolved["solution"]["id"],
+                lab_id=numeric_id,
+                reference_code=resolved["solution"]["reference_code"],
+                explanation=resolved["solution"].get("explanation", "Official reference implementation."),
+                is_trusted=True
+            )
         return SolutionGenerator.generate_solution(
-            SolutionGenerationRequest(lab_id=lab_id, persist=True),
+            SolutionGenerationRequest(lab_id=numeric_id, persist=True),
             db=db
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Solution generation failed: {str(e)}")
 
@@ -188,15 +293,34 @@ def generate_solution_for_lab(
 # 8. Sandbox Validation
 @router.post("/labs/{lab_id}/validate", response_model=LabValidationResponse)
 def validate_lab_in_sandbox(
-    lab_id: int,
+    lab_id: str,
     db: Session = Depends(get_db)
 ):
     """
-    Validates a generated lab by executing its reference solution and test harness
+    Validates a generated or template lab by executing its reference solution and test harness
     in an isolated Docker sandbox (or isolated subprocess testing fallback).
     """
     try:
-        return SandboxService.validate_lab(lab_id=lab_id, db=db)
+        resolved = _resolve_lab_item(lab_id, db)
+        numeric_id = resolved["id"]
+        if numeric_id >= 1000:
+            test_cases = [
+                TestCaseSchema(**tc) if isinstance(tc, dict) else tc
+                for tc in resolved.get("test_cases", [])
+            ]
+            val_result = SandboxService.validate_code(
+                solution_code=resolved["solution"]["reference_code"] if resolved.get("solution") else "",
+                test_cases=test_cases
+            )
+            return LabValidationResponse(
+                lab_id=numeric_id,
+                is_valid=val_result.is_valid,
+                status="validated" if val_result.is_valid else "rejected",
+                validation_details=val_result
+            )
+        return SandboxService.validate_lab(lab_id=numeric_id, db=db)
+    except HTTPException:
+        raise
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
@@ -206,93 +330,14 @@ def validate_lab_in_sandbox(
 # 9. Get Generated Lab Details
 @router.get("/labs/{lab_id}")
 def get_lab_details(
-    lab_id: int,
+    lab_id: str,
     db: Session = Depends(get_db)
 ):
     """
-    Retrieves full details of a generated lab, including its solution, test cases, and validation history.
+    Retrieves full details of a generated or built-in lab by integer ID or string slug,
+    including its solution, test cases, and validation history.
     """
-    lab = db.query(TechnicalGeneratedLab).filter(TechnicalGeneratedLab.id == lab_id).first()
-    if not lab:
-        # Check if this is a built-in template lab (id >= 1000)
-        if lab_id >= 1000:
-            from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
-            tmpl_idx = lab_id - 1001
-            if 0 <= tmpl_idx < len(BUILTIN_LAB_TEMPLATES):
-                tmpl = BUILTIN_LAB_TEMPLATES[tmpl_idx]
-                return {
-                    "id": lab_id,
-                    "template_id": tmpl.id,
-                    "title": tmpl.title,
-                    "objective": f"Master {tmpl.skill} in practical public administration data workflows.",
-                    "language": tmpl.language,
-                    "difficulty": tmpl.difficulty,
-                    "status": "validated",
-                    "instructions": tmpl.instructions_template.format(
-                        objective=f"Implement and validate {tmpl.title}",
-                        function_name=tmpl.tags[0] if tmpl.tags else "process_solution"
-                    ),
-                    "starter_code": tmpl.starter_code_template,
-                    "constraints": tmpl.constraints,
-                    "test_cases": [tc.model_dump() for tc in tmpl.test_cases_template],
-                    "expected_behavior": "Return structured outputs satisfying test assertions.",
-                    "solution": {
-                        "id": 9999,
-                        "reference_code": tmpl.solution_template,
-                        "explanation": "Official reference implementation adhering to template test harness."
-                    },
-                    "latest_validation": None,
-                    "validation_history": [],
-                    "created_at": None
-                }
-        raise HTTPException(status_code=404, detail="Lab not found")
-
-    solution = db.query(TechnicalLabSolution).filter(TechnicalLabSolution.lab_id == lab.id).first()
-    val_records = db.query(TechnicalLabValidationResult).filter(
-        TechnicalLabValidationResult.lab_id == lab.id
-    ).order_by(TechnicalLabValidationResult.validated_at.desc()).all()
-
-    test_cases_raw = json.loads(lab.test_cases_json) if lab.test_cases_json else []
-    constraints_raw = json.loads(lab.constraints_json) if lab.constraints_json else []
-
-    validation_history = []
-    for vr in val_records:
-        test_summary = json.loads(vr.test_summary_json) if vr.test_summary_json else []
-        validation_history.append({
-            "id": vr.id,
-            "is_valid": vr.is_valid,
-            "sandbox_type": vr.sandbox_type,
-            "exit_code": vr.exit_code,
-            "execution_time_ms": vr.execution_time_ms,
-            "stdout": vr.stdout,
-            "stderr": vr.stderr,
-            "test_summary": test_summary,
-            "error_message": vr.error_message,
-            "validated_at": vr.validated_at.isoformat() if vr.validated_at else None
-        })
-
-    return {
-        "id": lab.id,
-        "template_id": lab.template_id,
-        "title": lab.title,
-        "objective": lab.objective,
-        "language": lab.language,
-        "difficulty": lab.difficulty,
-        "status": lab.status,
-        "instructions": lab.instructions,
-        "starter_code": lab.starter_code,
-        "constraints": constraints_raw,
-        "test_cases": test_cases_raw,
-        "expected_behavior": lab.expected_behavior,
-        "solution": {
-            "id": solution.id,
-            "reference_code": solution.reference_code,
-            "explanation": solution.explanation
-        } if solution else None,
-        "latest_validation": validation_history[0] if validation_history else None,
-        "validation_history": validation_history,
-        "created_at": lab.created_at.isoformat() if lab.created_at else None
-    }
+    return _resolve_lab_item(lab_id, db)
 
 
 # 10. End-to-End Pipeline Orchestration
@@ -381,7 +426,7 @@ def list_all_labs(
 # 12. Contextual lab coaching assistant
 @router.post("/labs/{lab_id}/assistant", response_model=LabAssistantResponse)
 def coach_lab_learner(
-    lab_id: int,
+    lab_id: str,
     req: LabAssistantRequest,
     db: Session = Depends(get_db),
 ):
@@ -444,43 +489,44 @@ LEARNER QUESTION: {req.message}
 # 13. Execute Student Submission
 @router.post("/labs/{lab_id}/execute", response_model=ExecuteStudentCodeResponse)
 def execute_student_submission(
-    lab_id: int,
+    lab_id: str,
     req: ExecuteStudentCodeRequest,
     db: Session = Depends(get_db)
 ):
     """
     Validates learner code by executing test harness assertions in the isolated Sandbox.
+    Supports both integer IDs and human-readable string slugs.
     """
-    # Check if this is a built-in template lab (id >= 1000)
-    if lab_id >= 1000:
-        from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
-        tmpl_idx = lab_id - 1001
-        if 0 <= tmpl_idx < len(BUILTIN_LAB_TEMPLATES):
-            tmpl = BUILTIN_LAB_TEMPLATES[tmpl_idx]
-            val_result = SandboxService.validate_code(
-                solution_code=req.code,
-                test_cases=tmpl.test_cases_template
-            )
-            all_passed = val_result.is_valid
-            return ExecuteStudentCodeResponse(
-                lab_id=lab_id,
-                all_passed=all_passed,
-                passed_tests_count=val_result.passed_tests_count,
-                total_tests_count=val_result.total_tests_count,
-                test_results=val_result.test_results,
-                execution_time_ms=val_result.execution_time_ms,
-                stdout=val_result.stdout,
-                stderr=val_result.stderr,
-                exit_code=val_result.exit_code,
-                feedback="All test cases passed! Verification badge earned." if all_passed else f"{val_result.passed_tests_count} of {val_result.total_tests_count} test cases passed."
-            )
-
     try:
-        return SandboxService.execute_student_code(
-            lab_id=lab_id,
-            student_code=req.code,
-            db=db
+        resolved = _resolve_lab_item(lab_id, db)
+        test_cases = [
+            TestCaseSchema(**tc) if isinstance(tc, dict) else tc
+            for tc in resolved.get("test_cases", [])
+        ]
+        val_result = SandboxService.validate_code(
+            solution_code=req.code,
+            test_cases=test_cases
         )
+        all_passed = val_result.is_valid
+        feedback = (
+            "All test cases passed! Verification badge earned."
+            if all_passed else
+            f"{val_result.passed_tests_count} of {val_result.total_tests_count} test cases passed. Review failing test cases."
+        )
+        return ExecuteStudentCodeResponse(
+            lab_id=resolved["id"],
+            all_passed=all_passed,
+            passed_tests_count=val_result.passed_tests_count,
+            total_tests_count=val_result.total_tests_count,
+            test_results=val_result.test_results,
+            execution_time_ms=val_result.execution_time_ms,
+            stdout=val_result.stdout,
+            stderr=val_result.stderr,
+            exit_code=val_result.exit_code,
+            feedback=feedback
+        )
+    except HTTPException:
+        raise
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
