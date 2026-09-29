@@ -420,8 +420,17 @@ export default function CarryforwardAssessmentPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {selectedCourseFilter && (
+                <Link
+                  href={`/courses/${selectedCourseFilter}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#1E3A8A] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#172554] transition-all"
+                >
+                  <BookOpen className="h-4 w-4 text-white" />
+                  Return to Course
+                </Link>
+              )}
               <Link
-                href="/behavioural/interview"
+                href={`/behavioural/interview${selectedCourseFilter ? `?courseId=${selectedCourseFilter}` : ""}`}
                 className="inline-flex items-center gap-2 rounded-lg bg-white border border-[#1E3A8A]/30 px-3.5 py-2 text-xs font-bold text-[#1E3A8A] shadow-xs hover:bg-blue-50/50 transition-all"
               >
                 <Clock className="h-4 w-4 text-[#0D9488]" />
@@ -821,7 +830,16 @@ export default function CarryforwardAssessmentPage() {
                       ))}
                     </div>
 
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                      {selectedCourseFilter && (
+                        <Link
+                          href={`/courses/${selectedCourseFilter}`}
+                          className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-all cursor-pointer"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                          Return to Course
+                        </Link>
+                      )}
                       <button
                         onClick={() => startSession()}
                         className="inline-flex items-center gap-2 rounded-lg bg-[#1E3A8A] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#1E3A8A]/90 transition-all cursor-pointer"

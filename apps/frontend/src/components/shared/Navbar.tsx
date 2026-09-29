@@ -143,7 +143,7 @@ export function Navbar() {
     handleAnchorClick(e, targetId);
   };
 
-  // Authenticated Competency Navigation Items
+  // Authenticated LMS Navigation Items
   const authenticatedNavItems = [
     {
       href: "/home",
@@ -151,24 +151,26 @@ export function Navbar() {
       icon: LayoutDashboard,
     },
     {
-      href: "/competency",
-      label: "Competency",
-      icon: Target,
-    },
-    {
       href: "/courses",
       label: t("nav.courses") || "Courses",
       icon: BookOpen,
     },
     {
-      href: "/quiz",
-      label: "Quiz",
-      icon: FileQuestion,
+      href: "/my-learning",
+      label: "My Learning",
+      icon: GraduationCap,
     },
     {
-      href: "/behavioural/interview",
-      label: t("nav.oralBoard") || "Oral Board",
-      icon: Video,
+      href: "/progress",
+      label: "Progress",
+      icon: Award,
+    },
+    {
+      href: "/labs",
+      label: t("nav.labs") || "Virtual Labs",
+      icon: FlaskConical,
+      badge: "Interactive",
+      badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
     },
     {
       href: "/statistical",
@@ -178,18 +180,28 @@ export function Navbar() {
       badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
     },
     {
-      href: "/labs",
-      label: t("nav.labs") || "Virtual Labs",
-      icon: FlaskConical,
-      badge: "Interactive",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    {
       href: "/digital-governance",
       label: t("nav.digitalGovernance") || "Cyber Defense",
       icon: ShieldAlert,
       badge: "Sandbox",
       badgeColor: "bg-blue-50 text-[#1E3A8A] border-blue-200",
+    },
+    {
+      href: "/behavioural/interview",
+      label: t("nav.oralBoard") || "Oral Board",
+      icon: Video,
+      badge: "AI Board",
+      badgeColor: "bg-teal-50 text-teal-800 border-teal-200",
+    },
+    {
+      href: "/quiz",
+      label: "Quiz Hub",
+      icon: FileQuestion,
+    },
+    {
+      href: "/competency",
+      label: "Competencies",
+      icon: Target,
     },
   ];
 

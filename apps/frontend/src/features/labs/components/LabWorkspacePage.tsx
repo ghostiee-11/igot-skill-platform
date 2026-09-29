@@ -94,6 +94,15 @@ function loadSavedCells(labId: string): NotebookCell[] | null {
 
 export default function LabWorkspacePage() {
   const { labId } = useParams<{ labId: string }>();
+  const [courseId, setCourseId] = useState<string>("3");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const cId = params.get("courseId");
+      if (cId) setCourseId(cId);
+    }
+  }, []);
   const [lab, setLab] = useState<LabDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cells, setCells] = useState<NotebookCell[]>([]);
@@ -306,15 +315,15 @@ export default function LabWorkspacePage() {
     <div className="flex flex-col bg-slate-50 lg:h-[calc(100vh-65px)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/labs" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900">
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Labs
+          <Link href={`/learn/${courseId}`} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-[#1E3A8A] bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors shadow-2xs">
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Return to Course Player
           </Link>
           <span className="h-6 w-px shrink-0 bg-slate-200" aria-hidden="true" />
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold text-slate-900">{lab.title}</h1>
-            <p className="text-xs text-slate-500">
-              Python 3.11 · <span className="capitalize">{lab.difficulty}</span> · {tests.length || lab.test_cases_count || 0} graded tests
+            <h1 className="truncate text-sm font-bold text-slate-900">{lab.title}</h1>
+            <p className="text-[11px] text-slate-500">
+              Python 3.11 · <span className="capitalize">{lab.difficulty}</span> · {tests.length || lab.test_cases_count || 0} graded test assertions
             </p>
           </div>
         </div>
@@ -508,6 +517,14 @@ export default function LabWorkspacePage() {
                   {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="size-4" aria-hidden="true" />}
                   {submitting ? "Grading..." : testResult ? "Submit again" : "Submit for grading"}
                 </Button>
+
+                {testResult && (
+                  <Link href={`/learn/${courseId}`} className="block w-full">
+                    <Button variant="outline" className="w-full border-blue-200 bg-blue-50/60 text-[#1E3A8A] hover:bg-blue-100/60 font-semibold text-xs">
+                      <ChevronLeft className="size-3.5 mr-1" /> Return to Course Player
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
           </div>

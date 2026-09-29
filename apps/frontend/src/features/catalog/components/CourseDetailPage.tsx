@@ -35,7 +35,7 @@ export default function CourseDetailPage() {
   const { courseId } = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,23 +90,32 @@ export default function CourseDetailPage() {
   // Helper for localized course text
   const getCourseTitle = () => {
     if (!course) return "";
-    const key = `course.${course.id}.title`;
-    const translated = t(key);
-    return translated !== key ? translated : course.title;
+    if (language === "hi") {
+      const key = `course.${course.id}.title`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return course.title;
   };
 
   const getCourseOverview = () => {
     if (!course) return "";
-    const key = `course.${course.id}.overview`;
-    const translated = t(key);
-    return translated !== key ? translated : course.overview;
+    if (language === "hi") {
+      const key = `course.${course.id}.overview`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return course.overview;
   };
 
   const getCourseOrg = () => {
     if (!course) return "";
-    const key = `org.${course.organization}`;
-    const translated = t(key);
-    return translated !== key ? translated : course.organization;
+    if (language === "hi") {
+      const key = `org.${course.organization}`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return course.organization;
   };
 
   const getDifficultyLabel = (diff: string) => {
@@ -431,9 +440,10 @@ export default function CourseDetailPage() {
                         {isExpanded && mod.lessons && (
                           <div className="p-2 divide-y divide-slate-100 bg-white">
                             {mod.lessons.map((lesson) => (
-                              <div
+                              <a
                                 key={lesson.id}
-                                className="flex items-center justify-between py-2.5 px-3 hover:bg-slate-50 rounded-lg text-xs group"
+                                href={`/learn/${course.id}?lessonId=${lesson.id}`}
+                                className="flex items-center justify-between py-3 px-3 hover:bg-blue-50/60 rounded-lg text-xs group cursor-pointer transition-colors"
                               >
                                 <div className="flex items-center gap-2.5">
                                   {lesson.content_type === "reading" && (
@@ -443,23 +453,24 @@ export default function CourseDetailPage() {
                                     <Video className="h-3.5 w-3.5 text-amber-600" />
                                   )}
                                   {lesson.content_type === "lab" && (
-                                    <FlaskConical className="h-3.5 w-3.5 text-indigo-600" />
+                                    <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
                                   )}
-                                  <span className="text-slate-700 font-medium group-hover:text-[#1E3A8A] transition-colors">
+                                  <span className="text-slate-800 font-semibold group-hover:text-[#1E3A8A] transition-colors">
                                     {lesson.title}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-slate-500">
                                   {lesson.has_activity && (
-                                    <span className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded border border-slate-200">
+                                    <span className="text-[10px] bg-blue-50 text-[#1E3A8A] font-bold px-2 py-0.5 rounded border border-blue-200">
                                       {t("course.includesPractice")}
                                     </span>
                                   )}
-                                  <span className="text-slate-400 text-[11px]">
+                                  <span className="text-slate-400 text-[11px] font-medium">
                                     {lesson.duration_minutes}m
                                   </span>
+                                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#1E3A8A] group-hover:translate-x-0.5 transition-all" />
                                 </div>
-                              </div>
+                              </a>
                             ))}
                           </div>
                         )}
@@ -493,7 +504,7 @@ export default function CourseDetailPage() {
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <a
-                        href="/digital-governance/sandbox"
+                        href={`/digital-governance/sandbox?courseId=${course.id}`}
                         className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#1E3A8A] hover:shadow-md transition-all group block"
                       >
                         <div className="flex items-center justify-between mb-1.5">
@@ -513,7 +524,7 @@ export default function CourseDetailPage() {
                       </a>
 
                       <a
-                        href="/digital-governance/scenarios"
+                        href={`/digital-governance/scenarios?courseId=${course.id}`}
                         className="p-3.5 rounded-xl bg-white border border-slate-200 hover:border-[#1E3A8A] hover:shadow-md transition-all group block"
                       >
                         <div className="flex items-center justify-between mb-1.5">
