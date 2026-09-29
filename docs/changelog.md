@@ -1,5 +1,12 @@
 # 📜 Repository Changelog
 
+## 2026-09-29 — Behavioural interview multi-provider STT and real-time speech capture
+
+- **Scope**: `[frontend]` `[backend]`
+- **Multi-tier STT Fallback**: Upgraded `/api/behavioural/interview/transcribe` in `backend/app/modules/behavioural_cgp/router.py` to support multi-provider speech-to-text fallback (Sarvam AI $\rightarrow$ Groq Whisper $\rightarrow$ OpenAI Whisper $\rightarrow$ Google Gemini Flash $\rightarrow$ Browser Speech Recognition) using standard environment variables (`SARVAM_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`).
+- **Live Microphone Capture**: Enhanced `apps/frontend/src/features/behavioural/hooks/useSpeechCapture.ts` with 16 kHz Mono WAV PCM encoding, concurrent `SpeechRecognition` / `webkitSpeechRecognition` live stream, text retention without draft overwriting, and graceful error handling.
+- **Dependencies & Verification**: All required dependencies (`httpx`, `groq`, `python-multipart`) verified in `backend/requirements.txt`; verified with 156 backend tests passing and clean frontend build.
+
 ## 2026-09-23 — Behavioural interview LLM restored
 
 - Restored Groq follow-ups and transcript scoring. The former default model returned `model_not_found`; `openai/gpt-oss-120b` was verified with the configured key. Assessment still owns durable sessions and records the provider used for each turn.
