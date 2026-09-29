@@ -185,8 +185,12 @@ export default function HomePage() {
                   </CardDescription>
                 </div>
                 {continueCourse && (
-                  <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                    {t("home.inProgress")}
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    continueCourse.is_completed
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-teal-700 bg-teal-50 border-teal-200"
+                  }`}>
+                    {continueCourse.is_completed ? t("home.completed") : t("home.inProgress")}
                   </span>
                 )}
               </CardHeader>
@@ -202,11 +206,13 @@ export default function HomePage() {
                           {continueCourse.current_module} • {continueCourse.current_lesson}
                         </p>
                       </div>
-                      <a href={`/learn/${continueCourse.course_id}`}>
+                      <a href={continueCourse.last_lesson_id ? `/learn/${continueCourse.course_id}?lessonId=${continueCourse.last_lesson_id}` : `/learn/${continueCourse.course_id}`}>
                         <Button size="sm"
                           className="navy-teal-gradient text-white text-xs font-bold rounded-xl h-9 px-4 gap-1.5 shadow-sm cursor-pointer border-0 hover:opacity-90 transition-opacity">
                           <PlayCircle className="h-3.5 w-3.5" />
-                          {t("home.resumeCourse")}
+                          {continueCourse.is_completed
+                            ? "Review Course"
+                            : (continueCourse.progress_percent > 0 ? t("home.resumeCourse") : "Start Learning")}
                         </Button>
                       </a>
                     </div>

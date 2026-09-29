@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.models.models import (
-    User, Course, Module, Lesson, Enrollment, Progress
+    User, Course, Module, Lesson, Enrollment, Progress, LearningHistory
 )
 from .schemas import ActivityAnswerRequest
 
@@ -205,6 +205,20 @@ def get_course_player(
             "is_last_lesson": next_lesson_id is None
         }
     }
+    # Record viewed in learning history & update active date
+    lh = db.query(LearningHistory).filter(
+        LearningHistory.user_id == current_user.id,
+        LearningHistory.course_id == course.id
+    ).first()
+    if not lh:
+        lh = LearningHistory(user_id=current_user.id, course_id=course.id, viewed_at=datetime.datetime.utcnow())
+        db.add(lh)
+    else:
+        lh.viewed_at = datetime.datetime.utcnow()
+
+    if current_user.profile:
+        current_user.profile.last_active_date = datetime.datetime.utcnow()
+
     db.commit()
     return response
 
@@ -239,7 +253,8 @@ def mark_lesson_complete(
             enrollment_id=enrollment.id,
             module_id=lesson.module_id,
             lesson_id=lesson.id,
-            completed=True
+            completed=True,
+            updated_at=datetime.datetime.utcnow()
         )
         db.add(progress)
     else:
@@ -251,22 +266,51 @@ def mark_lesson_complete(
         db.query(Lesson)
         .join(Module, Lesson.module_id == Module.id)
         .filter(Module.course_id == course_id)
-        .count()
+        .order_by(Module.order.asc(), Lesson.order.asc())
+        .all()
     )
-    all_completed = (
-        db.query(Progress)
-        .filter(Progress.enrollment_id == enrollment.id, Progress.completed == True)
-        .count()
-    )
+    all_completed_ids = {
+        p.lesson_id for p in db.query(Progress).filter(Progress.enrollment_id == enrollment.id, Progress.completed == True).all()
+    }
+    all_completed_ids.add(lesson.id)
 
-    pct = min(100.0, round((all_completed / max(all_course_lessons, 1)) * 100, 1))
+    pct = min(100.0, round((len(all_completed_ids) / max(len(all_course_lessons), 1)) * 100, 1))
     enrollment.progress_percent = pct
+
+    # Find the next incomplete lesson
+    next_incomplete_lesson = next((l for l in all_course_lessons if l.id not in all_completed_ids), None)
+    if next_incomplete_lesson:
+        enrollment.last_lesson_id = next_incomplete_lesson.id
+    else:
+        enrollment.last_lesson_id = lesson.id
+
+    if pct >= 100.0:
+        enrollment.status = "completed"
+        enrollment.completed_at = datetime.datetime.utcnow()
+    else:
+        enrollment.status = "in_progress"
+
+    # Record in LearningHistory
+    lh = db.query(LearningHistory).filter(
+        LearningHistory.user_id == current_user.id,
+        LearningHistory.course_id == course_id
+    ).first()
+    if not lh:
+        lh = LearningHistory(user_id=current_user.id, course_id=course_id, viewed_at=datetime.datetime.utcnow())
+        db.add(lh)
+    else:
+        lh.viewed_at = datetime.datetime.utcnow()
+
+    if current_user.profile:
+        current_user.profile.last_active_date = datetime.datetime.utcnow()
+
     db.commit()
 
     return {
         "success": True,
         "lesson_id": lesson.id,
         "progress_percent": pct,
+        "next_lesson_id": next_incomplete_lesson.id if next_incomplete_lesson else None,
         "is_course_finished": pct >= 100.0
     }
 
@@ -296,15 +340,31 @@ def check_activity_answer(
                 Progress.lesson_id == lesson.id
             ).first()
             if not prog:
-                # Learners usually answer the practice question before marking the lesson complete.
                 prog = Progress(
                     enrollment_id=enrollment.id,
                     module_id=lesson.module_id,
                     lesson_id=lesson.id,
-                    completed=False
+                    completed=False,
+                    updated_at=datetime.datetime.utcnow()
                 )
                 db.add(prog)
             prog.activity_completed = True
+            prog.updated_at = datetime.datetime.utcnow()
+            
+            # Record in LearningHistory
+            lh = db.query(LearningHistory).filter(
+                LearningHistory.user_id == current_user.id,
+                LearningHistory.course_id == course_id
+            ).first()
+            if not lh:
+                lh = LearningHistory(user_id=current_user.id, course_id=course_id, viewed_at=datetime.datetime.utcnow())
+                db.add(lh)
+            else:
+                lh.viewed_at = datetime.datetime.utcnow()
+
+            if current_user.profile:
+                current_user.profile.last_active_date = datetime.datetime.utcnow()
+
             db.commit()
 
     return {
