@@ -306,6 +306,14 @@ def mark_lesson_complete(
 
     db.commit()
 
+    # Real-time Attentive Knowledge Tracing (AKT) trigger
+    try:
+        from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+        AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+        AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+    except Exception as exc:
+        pass
+
     return {
         "success": True,
         "lesson_id": lesson.id,
@@ -366,6 +374,14 @@ def check_activity_answer(
                 current_user.profile.last_active_date = datetime.datetime.utcnow()
 
             db.commit()
+
+            # Real-time Attentive Knowledge Tracing (AKT) trigger
+            try:
+                from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+                AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+                AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+            except Exception:
+                pass
 
     return {
         "is_correct": is_correct,

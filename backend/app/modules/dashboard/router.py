@@ -373,21 +373,42 @@ def get_dashboard_summary(
     else:
         hours_learned = 0.0
 
-    user_skills = (
-        db.query(UserSkill)
-        .options(joinedload(UserSkill.skill))
-        .filter(UserSkill.user_id == current_user.id)
-        .all()
-    )
-    skills_list = [
-        {
-            "id": us.skill.id,
-            "name": us.skill.name,
-            "category": us.skill.category,
-            "acquired_at": us.acquired_at.strftime("%b %Y") if us.acquired_at else "Recently"
-        }
-        for us in user_skills if us.skill
-    ]
+    # Attentive Knowledge Tracing & Skill Intelligence for Dashboard
+    skills_list = []
+    radar_domains = []
+    try:
+        from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+        traceable = AttentiveKnowledgeTracingEngine.get_full_traceable_profile(db, current_user.id)
+        skills_list = [
+            {
+                "id": c["id"],
+                "name": c["name"],
+                "category": c["domain_name"],
+                "level": c["level"],
+                "mastery_percent": c["mastery_percent"],
+                "status": c["status"],
+                "status_color": c["status_color"],
+                "acquired_at": f"Level {c['level']:.1f}/5.0"
+            }
+            for c in traceable["competencies"][:6]
+        ]
+        radar_domains = traceable["domains"]
+    except Exception:
+        user_skills = (
+            db.query(UserSkill)
+            .options(joinedload(UserSkill.skill))
+            .filter(UserSkill.user_id == current_user.id)
+            .all()
+        )
+        skills_list = [
+            {
+                "id": us.skill.id,
+                "name": us.skill.name,
+                "category": us.skill.category,
+                "acquired_at": us.acquired_at.strftime("%b %Y") if us.acquired_at else "Recently"
+            }
+            for us in user_skills if us.skill
+        ]
 
     db.commit()
 
@@ -419,7 +440,8 @@ def get_dashboard_summary(
         },
         "competencies": {
             "skills_count": len(skills_list),
-            "top_skills": skills_list
+            "top_skills": skills_list,
+            "radar_domains": radar_domains
         },
         "recently_explored": recently_explored,
         "trending_courses": [

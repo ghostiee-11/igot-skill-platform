@@ -183,6 +183,15 @@ def submit_quiz(
     )
     db.add(attempt)
     db.commit()
+
+    # Real-time Attentive Knowledge Tracing (AKT) trigger
+    try:
+        from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+        AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+        AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+    except Exception:
+        pass
+
     return {
         "attempt_id": attempt.id, "score_percent": score, "correct_count": correct_count, "total_questions": total,
         "band": band, "feedback": message, "concepts_to_review": concepts_to_review, "results": results,

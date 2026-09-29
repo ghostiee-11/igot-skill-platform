@@ -121,42 +121,66 @@ export default function RecommendationsPage() {
                     </CardContent>
                   </Card>
                 )}
-                {items.map((rec) => (
-                  <Card key={rec.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg text-balance">{rec.course_title ?? "Course"}</CardTitle>
-                      <CardDescription className="text-pretty text-slate-600">{rec.reason}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap items-center gap-2">
-                      {rec.course_id && (
-                        <ButtonLink href={`/courses/${rec.course_id}`} variant={rec.status === "enrolled" ? "default" : "outline"} size="sm">
-                          {rec.status === "enrolled" ? "Continue course" : "View course"}
+                {items.map((rec) => {
+                  const targetUrl = rec.href || (rec.course_id ? `/courses/${rec.course_id}` : "/courses");
+                  const typeLabel = rec.type === "lab" ? "Hands-on Lab" : rec.type === "cyber_sandbox" ? "Cyber Sandbox" : rec.type === "adaptive_exam" ? "Adaptive Exam" : rec.type === "ai_interview" ? "AI Oral Board" : "Course";
+                  const typeBadgeColor = rec.type === "lab" ? "bg-emerald-50 text-emerald-800 border-emerald-200" : rec.type === "cyber_sandbox" ? "bg-sky-50 text-sky-800 border-sky-200" : rec.type === "adaptive_exam" ? "bg-indigo-50 text-indigo-800 border-indigo-200" : "bg-blue-50 text-[#1E3A8A] border-blue-200";
+
+                  return (
+                    <Card key={rec.id} className="overflow-hidden border border-slate-200 shadow-xs hover:border-[#1E3A8A]/40 transition">
+                      <CardHeader className="pb-3">
+                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${typeBadgeColor}`}>
+                            {typeLabel}
+                          </span>
+                          {rec.difficulty && (
+                            <span className="text-xs text-slate-500 capitalize font-medium">
+                              · {rec.difficulty}
+                            </span>
+                          )}
+                          {rec.duration && (
+                            <span className="text-xs text-slate-500 font-medium">
+                              · {rec.duration}
+                            </span>
+                          )}
+                          {rec.target_competency && (
+                            <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
+                              Target: {rec.target_competency}
+                            </span>
+                          )}
+                        </div>
+                        <CardTitle className="text-lg text-balance font-bold text-slate-900">{rec.course_title ?? "Recommended Activity"}</CardTitle>
+                        <CardDescription className="text-pretty text-slate-600 text-sm mt-1">{rec.reason}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex flex-wrap items-center gap-2 pt-0">
+                        <ButtonLink href={targetUrl} variant={rec.status === "enrolled" ? "default" : "outline"} size="sm">
+                          {rec.type === "lab" ? "Launch Lab" : rec.type === "cyber_sandbox" ? "Open Sandbox" : rec.type === "adaptive_exam" ? "Start Assessment" : rec.type === "ai_interview" ? "Begin Interview" : (rec.status === "enrolled" ? "Continue course" : "View course")}
                           <ArrowRight className="size-4" aria-hidden="true" />
                         </ButtonLink>
-                      )}
-                      {rec.status === "pending" && (
-                        <>
-                          <Button size="sm" onClick={() => updateStatus(rec.id, "enrolled")} disabled={busyId === rec.id}>
-                            <Check className="size-4" aria-hidden="true" />
-                            Enroll
+                        {rec.status === "pending" && (
+                          <>
+                            <Button size="sm" onClick={() => updateStatus(rec.id, "enrolled")} disabled={busyId === rec.id}>
+                              <Check className="size-4" aria-hidden="true" />
+                              Enroll
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => updateStatus(rec.id, "dismissed")} disabled={busyId === rec.id}>
+                              <X className="size-4" aria-hidden="true" />
+                              Dismiss
+                            </Button>
+                          </>
+                        )}
+                        {rec.status === "dismissed" && (
+                          <Button size="sm" variant="ghost" onClick={() => updateStatus(rec.id, "pending")} disabled={busyId === rec.id}>
+                            Restore
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => updateStatus(rec.id, "dismissed")} disabled={busyId === rec.id}>
-                            <X className="size-4" aria-hidden="true" />
-                            Dismiss
-                          </Button>
-                        </>
-                      )}
-                      {rec.status === "dismissed" && (
-                        <Button size="sm" variant="ghost" onClick={() => updateStatus(rec.id, "pending")} disabled={busyId === rec.id}>
-                          Restore
-                        </Button>
-                      )}
-                      {rowErrors[rec.id] && (
-                        <p role="alert" className="w-full text-sm text-red-600">{rowErrors[rec.id]}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                        )}
+                        {rowErrors[rec.id] && (
+                          <p role="alert" className="w-full text-sm text-red-600">{rowErrors[rec.id]}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </TabsContent>
             );
           })}

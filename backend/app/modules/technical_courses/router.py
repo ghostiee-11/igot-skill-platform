@@ -491,6 +491,7 @@ LEARNER QUESTION: {req.message}
 def execute_student_submission(
     lab_id: str,
     req: ExecuteStudentCodeRequest,
+    current_user: Optional[User] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -513,6 +514,16 @@ def execute_student_submission(
             if all_passed else
             f"{val_result.passed_tests_count} of {val_result.total_tests_count} test cases passed. Review failing test cases."
         )
+
+        # Real-time Attentive Knowledge Tracing (AKT) trigger
+        try:
+            from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+            uid = current_user.id if current_user else 2
+            AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, uid)
+            AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, uid)
+        except Exception:
+            pass
+
         return ExecuteStudentCodeResponse(
             lab_id=resolved["id"],
             all_passed=all_passed,

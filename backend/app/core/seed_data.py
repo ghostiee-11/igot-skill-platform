@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.models import (
     User, UserProfile, Department, Course, Module, Lesson,
     Skill, CourseSkill, UserSkill, Enrollment, Progress,
-    Assessment, Question, PlannedCourse, LearningHistory
+    Assessment, Question, AssessmentAttempt, PlannedCourse, LearningHistory
 )
 from app.core.security import get_password_hash
 from app.modules.digital_governance.seed_data import (
@@ -1852,6 +1852,19 @@ Launch the lab workspace below to execute and verify your chart generation code.
     us1 = UserSkill(user_id=learner_user.id, skill_id=skills[2].id, source_course_id=c3.id)
     db.add(us1)
 
+    # 8. Seed Realistic Assessment Attempt for Rajesh Kumar
+    existing_att = db.query(AssessmentAttempt).filter_by(user_id=learner_user.id, assessment_id=a1.id).first()
+    if not existing_att:
+        att1 = AssessmentAttempt(
+            user_id=learner_user.id,
+            assessment_id=a1.id,
+            score_percent=82.5,
+            passed=True,
+            answers_json=json.dumps({"1": 0, "2": 0, "3": 0, "4": 0}),
+            submitted_at=datetime.datetime.utcnow() - datetime.timedelta(days=1)
+        )
+        db.add(att1)
+
     # 10. Seed Technical Course Lab Templates (Human-Created)
     from app.modules.technical_courses.services.template_service import BUILTIN_LAB_TEMPLATES
     from app.models.models import TechnicalLabTemplate
@@ -1876,6 +1889,15 @@ Launch the lab workspace below to execute and verify your chart generation code.
 
     # 11. Seed Digital Governance Challenges
     seed_cybersec_challenges(db)
+    db.commit()
+
+    # 12. Run Attentive Knowledge Tracing Engine for Initial Profiles
+    try:
+        from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+        AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, learner_user.id)
+        AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, learner_user.id)
+    except Exception as e:
+        print(f"Warning: could not run initial AKT: {e}")
 
     db.commit()
     print("Database successfully seeded with realistic civil service curriculum, accounts, technical lab templates, and digital governance challenges!")

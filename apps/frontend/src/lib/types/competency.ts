@@ -9,11 +9,26 @@ export interface DomainGap {
   generated_at: string;
 }
 
+export interface CompetencyRecentEvidence {
+  title: string;
+  type: string;
+  score_pct: number;
+  date: string;
+}
+
 export interface DomainCompetency {
+  id?: number;
   code: string;
   name: string;
   level: number;
+  mastery_percent?: number;
+  target_level?: number;
+  gap?: number;
+  status?: "Strong" | "Developing" | "Gap";
+  status_color?: "emerald" | "amber" | "rose";
   evidence_source: string | null;
+  evidence_count?: number;
+  recent_evidence?: CompetencyRecentEvidence[];
 }
 
 export interface DomainCourse {
@@ -48,6 +63,12 @@ export interface Recommendation {
   score: number;
   status: RecommendationStatus;
   generated_at: string;
+  type?: "course" | "lab" | "cyber_sandbox" | "adaptive_exam" | "ai_interview" | "quiz" | "revision";
+  category?: string;
+  difficulty?: string;
+  duration?: string;
+  target_competency?: string;
+  href?: string;
 }
 
 export interface QuizQuestion {
