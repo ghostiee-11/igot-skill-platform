@@ -408,3 +408,22 @@ def test_live_interview_with_dynamic_database_course(client):
     assert analysis["telemetry_summary"]["delivery_composure_score"] == 92.0
 
 
+def test_transcribe_endpoint_flow(client):
+    # 1. Test empty audio rejection
+    res_empty = client.post("/api/behavioural/interview/transcribe", files={"audio": ("dictation.wav", b"", "audio/wav")})
+    assert res_empty.status_code == 400
+
+    # 2. Test valid WAV payload with client speech fallback
+    fake_wav = b"RIFF" + b"\x00" * 2000
+    res_transcribe = client.post(
+        "/api/behavioural/interview/transcribe",
+        files={"audio": ("dictation.wav", fake_wav, "audio/wav")},
+        data={"client_transcript": "I ensure absolute adherence to CCS Conduct Rule 3 and constitutional integrity."}
+    )
+    assert res_transcribe.status_code == 200
+    data = res_transcribe.json()
+    assert "Conduct Rule 3" in data["text"]
+    assert "provider" in data
+
+
+

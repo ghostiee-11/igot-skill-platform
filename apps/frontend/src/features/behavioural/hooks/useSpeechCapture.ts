@@ -20,7 +20,7 @@ function join(a: string, b: string) {
 
 function microphoneError(reason: unknown) {
   if (reason instanceof DOMException && (reason.name === "NotAllowedError" || reason.name === "SecurityError")) {
-    return "Microphone access was blocked. Allow microphone access for localhost, then try again.";
+    return "Microphone access was blocked. Please allow microphone permissions in your browser, then try again.";
   }
   if (reason instanceof DOMException && reason.name === "NotFoundError") {
     return "No microphone was found. Connect a microphone and try again.";
@@ -81,7 +81,7 @@ function encodeWav(chunks: Float32Array[], sourceRate: number) {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-/** Captures PCM immediately after permission, encodes 16 kHz mono WAV, and sends it to Sarvam STT. */
+/** Captures PCM audio and connects to the multi-provider speech transcription pipeline. */
 export function useSpeechCapture(onText: (text: string) => void) {
   const [supported, setSupported] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -99,10 +99,13 @@ export function useSpeechCapture(onText: (text: string) => void) {
   const sampleRateRef = useRef(48_000);
   const baseTextRef = useRef("");
   const currentTextRef = useRef("");
+  const liveTranscriptRef = useRef("");
   const dictatedWordsRef = useRef(0);
   const onTextRef = useRef(onText);
   const completionRef = useRef<Promise<string> | null>(null);
   const resolveCompletionRef = useRef<((text: string) => void) | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     onTextRef.current = onText;
@@ -110,11 +113,26 @@ export function useSpeechCapture(onText: (text: string) => void) {
 
   useEffect(() => {
     // Client capability detection must happen after hydration.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSupported(typeof navigator.mediaDevices?.getUserMedia === "function" && typeof window.AudioContext === "function");
+    setSupported(
+      typeof navigator !== "undefined" &&
+        Boolean(navigator.mediaDevices?.getUserMedia) &&
+        (typeof window !== "undefined" && Boolean(window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext))
+    );
   }, []);
 
   const releaseCapture = useCallback(() => {
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    } catch {
+      // Ignored
+    }
+
     processorRef.current?.disconnect();
     sourceRef.current?.disconnect();
     silentGainRef.current?.disconnect();
@@ -133,6 +151,9 @@ export function useSpeechCapture(onText: (text: string) => void) {
     const chunks = sampleChunksRef.current;
     sampleChunksRef.current = [];
     const sourceRate = sampleRateRef.current;
+    const liveText = liveTranscriptRef.current.trim();
+    liveTranscriptRef.current = "";
+
     releaseCapture();
     setListening(false);
     setBusy(true);
@@ -140,17 +161,36 @@ export function useSpeechCapture(onText: (text: string) => void) {
     let completedText = currentTextRef.current;
     try {
       const wav = encodeWav(chunks, sourceRate);
-      if (wav.size < 1_644) throw new Error("No speech was recorded. Speak after the mic turns red, then stop dictation.");
       const form = new FormData();
       form.append("audio", wav, "dictation.wav");
-      const result = await uploadApi<{ text: string; provider: "sarvam" }>("/behavioural/interview/transcribe", form);
-      dictatedWordsRef.current += wordCount(result.text);
-      completedText = join(baseTextRef.current, result.text);
+      if (liveText) {
+        form.append("client_transcript", liveText);
+      }
+
+      const result = await uploadApi<{ text: string; provider?: string }>("/behavioural/interview/transcribe", form);
+      const transcribedText = result.text.trim() || liveText;
+
+      if (!transcribedText) {
+        throw new Error("No audible speech detected. Speak clearly and try again.");
+      }
+
+      dictatedWordsRef.current += wordCount(transcribedText);
+      completedText = join(baseTextRef.current, transcribedText);
       currentTextRef.current = completedText;
       onTextRef.current(completedText);
       setError(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Sarvam could not transcribe the recording. Try again.");
+      // If backend API failed but live speech recognition captured words, use that seamlessly
+      if (liveText) {
+        dictatedWordsRef.current += wordCount(liveText);
+        completedText = join(baseTextRef.current, liveText);
+        currentTextRef.current = completedText;
+        onTextRef.current(completedText);
+        setError(null);
+      } else {
+        const message = reason instanceof Error ? reason.message : "Transcription failed. Please try speaking again.";
+        setError(message);
+      }
     } finally {
       setBusy(false);
       resolveCompletionRef.current?.(completedText);
@@ -159,49 +199,94 @@ export function useSpeechCapture(onText: (text: string) => void) {
     }
   }, [releaseCapture]);
 
-  const start = useCallback(async (currentText: string) => {
-    if (activeRef.current || starting || busy) return;
-    setError(null);
-    setStarting(true);
-    baseTextRef.current = currentText.trim();
-    currentTextRef.current = currentText.trim();
-    sampleChunksRef.current = [];
+  const start = useCallback(
+    async (currentText: string) => {
+      if (activeRef.current || starting || busy) return;
+      setError(null);
+      setStarting(true);
+      baseTextRef.current = currentText.trim();
+      currentTextRef.current = currentText.trim();
+      liveTranscriptRef.current = "";
+      sampleChunksRef.current = [];
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-      });
-      streamRef.current = stream;
-      const context = new AudioContext();
-      audioContextRef.current = context;
-      await context.resume();
-      sampleRateRef.current = context.sampleRate;
-      const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(2048, 1, 1);
-      const silentGain = context.createGain();
-      silentGain.gain.value = 0;
-      sourceRef.current = source;
-      processorRef.current = processor;
-      silentGainRef.current = silentGain;
-      processor.onaudioprocess = (event) => {
-        if (activeRef.current) sampleChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
-      };
-      completionRef.current = new Promise<string>((resolve) => {
-        resolveCompletionRef.current = resolve;
-      });
-      activeRef.current = true;
-      source.connect(processor);
-      processor.connect(silentGain);
-      silentGain.connect(context.destination);
-      setListening(true);
-    } catch (reason) {
-      activeRef.current = false;
-      releaseCapture();
-      setError(microphoneError(reason));
-    } finally {
-      setStarting(false);
-    }
-  }, [busy, releaseCapture, starting]);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+        });
+        streamRef.current = stream;
+
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        const context = new AudioCtx();
+        audioContextRef.current = context;
+        await context.resume();
+        sampleRateRef.current = context.sampleRate;
+
+        const source = context.createMediaStreamSource(stream);
+        const processor = context.createScriptProcessor(2048, 1, 1);
+        const silentGain = context.createGain();
+        silentGain.gain.value = 0;
+        sourceRef.current = source;
+        processorRef.current = processor;
+        silentGainRef.current = silentGain;
+
+        processor.onaudioprocess = (event) => {
+          if (activeRef.current) {
+            sampleChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+          }
+        };
+
+        // Initialize SpeechRecognition if supported in browser for live transcription
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRec) {
+          try {
+            const recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = "en-IN";
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            recognition.onresult = (event: any) => {
+              let live = "";
+              for (let i = 0; i < event.results.length; i++) {
+                live += event.results[i][0].transcript + " ";
+              }
+              const cleanLive = live.trim();
+              if (cleanLive && activeRef.current) {
+                liveTranscriptRef.current = cleanLive;
+                const updated = join(baseTextRef.current, cleanLive);
+                currentTextRef.current = updated;
+                onTextRef.current(updated);
+              }
+            };
+            recognition.onerror = () => {
+              // Ignore recognition error; fallback to audio WAV backend transcription
+            };
+            recognition.start();
+            recognitionRef.current = recognition;
+          } catch {
+            // SpeechRecognition start error ignored
+          }
+        }
+
+        completionRef.current = new Promise<string>((resolve) => {
+          resolveCompletionRef.current = resolve;
+        });
+
+        activeRef.current = true;
+        source.connect(processor);
+        processor.connect(silentGain);
+        silentGain.connect(context.destination);
+        setListening(true);
+      } catch (reason) {
+        activeRef.current = false;
+        releaseCapture();
+        setError(microphoneError(reason));
+      } finally {
+        setStarting(false);
+      }
+    },
+    [busy, releaseCapture, starting]
+  );
 
   const stop = useCallback(() => {
     if (!activeRef.current) return;
@@ -228,7 +313,7 @@ export function useSpeechCapture(onText: (text: string) => void) {
       sampleChunksRef.current = [];
       releaseCapture();
     },
-    [releaseCapture],
+    [releaseCapture]
   );
 
   return { supported, starting, listening, busy, error, start, stop, finish, takeDictatedWords };
