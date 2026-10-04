@@ -1,17 +1,20 @@
 # Known issues and limits
 
-Last updated: 2026-09-25. See [migration status](migration/status.md) and the [runtime parity audit](migration/runtime-parity-audit-2026-09-23.md) for verification and repair follow-up.
+Last updated: 2026-10-04. See [local runtime verification](local-runtime-2026-10-04.md), [migration status](migration/status.md) and the [runtime parity audit](migration/runtime-parity-audit-2026-09-23.md).
 
 ## Inherited application debt
 
-- Copied frontend lint debt: an earlier check reported 73 errors / 100 warnings. Relocation does not fix these.
+- Copied frontend lint debt: current check reports 81 errors / 102 warnings; clean container production build passes.
+- Retained authored media needs review: the CPI lesson 1 YouTube URL loads a price-action trading course instead of official CPI instruction. Local bootstrap preserves branch content rather than silently substituting media.
+- Password-recovery delivery and semantic vector indexing remain unconfigured. Live speech/model features require provider keys; deterministic interview/quiz fallbacks work locally.
 - Original backend tests had six failures: two Marimo launch failures, three behavioural interview expectations/telemetry/scoring failures, and a Windows UTF-8 seed decoding failure. New services need independent verification.
 - The [learner audit](lms-learner-audit.md) leaves server-side timing, retake policy, completion gating, generated-content review, login return handling and accessibility open.
 - Draft designation targets and heuristic competency scores are not a validated civil-service measurement framework.
 
 ## Migration risks
 
-- Splitting ownership can omit profile/certificate, course/assessment and dashboard fields expected by the copied frontend.
+- Profile certificate/skill aggregation and dashboard identity personalization were repaired and verified on 2026-10-04; full compatibility inventory still needs separate cutover review.
+- Assessment completion now has a retryable outbox-backed HTTP dispatcher, verified with real PostgreSQL certificates and duplicate handling. RabbitMQ event publication/consumption and broader recovery tests remain separate work.
 - Evidence/completion delivery must survive retries and restarts; a synchronous happy path is insufficient proof.
 - PostgreSQL role isolation cannot be established with SQLite unit tests.
 - Migration must preserve IDs, hashes, historical payloads and optional content-pipeline resources; count-only checks are insufficient.

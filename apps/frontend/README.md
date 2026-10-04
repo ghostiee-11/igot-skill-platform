@@ -17,12 +17,17 @@ Next.js 16 App Router frontend for the iGOT Karmayogi learning experience.
 
 ## Commands
 
+From the repository root (workspace dependencies use the root lockfile):
+
 ```bash
-npm run dev
-npm run lint
-npx tsc --noEmit
-npm run build
+npm ci
+npm --workspace apps/frontend run dev
+npm --workspace apps/frontend run lint
+node node_modules/typescript/bin/tsc --noEmit -p apps/frontend/tsconfig.json
+npm --workspace apps/frontend run build -- --webpack
 ```
+
+Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api` before a host build/dev run. The Dockerfile uses the app-local lockfile in its isolated build context, then packages the standalone server with `.next/static` and `public` under the non-root Node user. Use [local setup](../../LOCAL_SETUP.md) for Compose and [Docker operations](../../docs/operations/docker-local.md) for startup/health. Inherited lint failures are recorded separately from successful TypeScript/production builds.
 
 ## Planned structure
 

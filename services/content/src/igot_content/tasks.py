@@ -4,6 +4,9 @@ from .database import Job,SessionLocal,Source
 from .extraction import extract_web_text
 from .storage import storage
 celery=Celery("content",broker=get_settings().rabbitmq_url)
+# RabbitMQ 4 rejects transient, non-exclusive control/event queues. Task queues
+# stay durable; only worker-local control and event subscriptions are exclusive.
+celery.conf.update(control_queue_exclusive=True, event_queue_exclusive=True)
 @celery.task(name="content.process_source")
 def process_source_job(job_id:str):
     import asyncio

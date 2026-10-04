@@ -1,5 +1,7 @@
 # UI/UX Design System: Navy Blue & Extended Institutional Palette
 
+2026-10-04 local follow-up: active styles are under `apps/frontend/src/app/globals.css`. Dark hero glass actions use the semantic `--color-hero-action-hover` token (white at 16% opacity) on hover and keyboard focus; labels/icons remain light. This replaces the obsolete opaque light-hero hover remap. My Learning was verified in the rebuilt local frontend.
+
 > **Status:** `Implemented` (Design Branch / Design System v3.0)  
 > **Primary Files:**  
 > - Styles: `frontend/src/app/globals.css`  

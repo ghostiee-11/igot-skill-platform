@@ -1,59 +1,45 @@
-# iGOT Skill Platform — Documentation
+# Documentation index
 
-## Service rebuild: start here
+Start with the current runtime. Historical documents are retained for provenance and should not be used as today's startup or feature-completion checklist.
 
-- [Architecture](architecture/service-architecture.md) and [service catalogue](services/README.md): boundaries, ownership, interfaces and data.
-- [Migration status](migration/status.md) and [data mapping](migration/data-ownership.md): actual verification, baseline, records and rollback.
-- [Decisions](decisions/README.md): current architecture decisions.
-- [Feature migration catalogue](features/service-migration-catalogue.md) and [known issues](known-issues.md): retained behavior, owners and limits.
-- [Lab operations](operations/labs.md): execution boundary and lifecycle.
-- Deferred projects: [fresh frontend](plans/frontend-rebuild.md) and [cloud VM labs](plans/cloud-vm-labs.md).
+## Current setup and operations
 
-The original navigation below is historical context. Check old paths and completed-feature claims against migration status. Read the owning service contract before changes; update specs/changelog with behavior changes and use ADRs for architectural decisions. No cross-service implementation imports or schema access; no import-time migrations/seeding. Source, tests and migrations outweigh prose. Do not mark scaffolded or unverified features complete.
+| Document | Purpose |
+|---|---|
+| [Repository overview](../README.md) | Application layout, current runtime and branch workflow |
+| [Local setup](../LOCAL_SETUP.md) | Authoritative startup, configuration, test and stop commands |
+| [Docker runtime guide](operations/docker-local.md) | Image/process inventory, startup order, storage, health and recovery |
+| [Handoff](HANDOFF.md) | Current work, decisions, executed evidence and next steps |
+| [Executed local verification](local-runtime-2026-10-04.md) | Actual runtime checks and limitations |
+| [Development workflow](development.md) | Daily contribution/testing workflow with current paths |
+| [Lab operations](operations/labs.md) | Execution boundary and local lifecycle |
+| [Bootstrap provenance](../infra/seed/README.md) | Authored fixture contents, repeatability and demo account behavior |
+| [Known issues](known-issues.md) | Current unavailable features, lint/content debt and production limits |
 
-Welcome to the centralized documentation hub for the **iGOT Karmayogi (MoSPI)** platform, built for the **Smart India Hackathon (SIH '26)**.
+## Architecture and migration
 
-This directory provides structured, decentralized knowledge bases for software engineers, evaluators, and AI coding agents.
+- [Service architecture](architecture/service-architecture.md): owned boundaries and current local HTTP/task delivery versus the target event transport.
+- [Service catalogue](services/README.md): ports, schema ownership and background processes.
+- [Architecture decisions](decisions/README.md): accepted service/lab decisions; acceptance is separate from verification.
+- [Migration status](migration/status.md): current evidence plus labelled historical checks.
+- [Data ownership and rollback](migration/data-ownership.md): explicit legacy migration scope and reconciliation requirements.
+- [API compatibility](migration/api-compatibility.md) and [feature migration catalogue](features/service-migration-catalogue.md): interface/behavior inventory, not automatic completion claims.
 
----
+## Feature and contribution references
 
-## Documentation Navigation
+The [feature index](features/README.md) links detailed specifications. Many original feature pages describe the monolith implementation; use the service migration catalogue, source/tests and current verification before treating them as current runtime behavior. [Changelog](changelog.md) records changes and [team logs](team/README.md) retain contribution history.
 
-### 1. [Master Changelog](changelog.md)
-The single source of truth for all repository changes made across team members and AI coding agents. Structured chronologically with module attribution (`[frontend]`, `[backend]`, `[devops]`, `[docs]`, `[architecture]`).
+Deferred work: [frontend redesign](plans/frontend-rebuild.md) and [cloud VM labs](plans/cloud-vm-labs.md).
 
----
+## Historical material
 
-### 2. [Feature Specifications (`docs/features/`)](features/README.md)
-In-depth functional and technical specifications for each subsystem:
-- [AI Copilot](features/ai-copilot.md) — LangGraph state machine, provider routing (Gemini/OpenAI), deterministic MoSPI fallback engine, and circular launcher widget.
-- [Course Management](features/course-management.md) — Discovery catalog, syllabus hierarchy, Coursera-style split-screen player, in-lesson practice concept checks, and full Hindi compatibility.
-- [Assessment & Certification](features/assessment-certification.md) — Timed exams, 70% passing threshold, automatic explanatory grading, celebratory confetti, and verifiable print/PDF certificates.
-- [Auth, RBAC & Onboarding](features/auth-rbac.md) — NIST PBKDF2-HMAC security, JWT sessions, pre-seeded evaluation personas, and the 5-step onboarding wizard.
-- [Analytics & Dashboards](features/analytics-dashboard.md) — 10-widget learner home dashboard, admin supervisory console, officer roster, and question difficulty analytics.
-- [UI/UX Design System](features/ui-design-system.md) — Official Navy Blue (`#1E3A8A`) and Sober Yellow (`#EAB308`) design standard, slate neutral tokens, single-viewport scroll gliding, zero-shift tab navigation, and zero-emoji compliance.
-- [Homepage & Public Portal](features/homepage-portal.md) — Institutional landing page (`/`), single-viewport section layout, official photography carousel, connected milestones, and bilingual support.
+- [Original monolith development guide](history/development-monolith.md).
+- [Monolith architecture](architecture.md), [module boundaries](domain-boundaries.md), and [original ADRs](adr/).
+- [2026-09-23 runtime parity audit](migration/runtime-parity-audit-2026-09-23.md), including its dated repairs.
+- [Initial 2026-10-04 read-only audit](local-validation-2026-10-04.md), superseded for runtime status by the executed repair receipt.
 
----
+Keep historical results dated. Do not translate an old test count, SQLite example, hosted/Supabase setup or demo progress snapshot into a claim about the current service stack.
 
-### 3. [Teammate Contribution Logs (`docs/team/`)](team/README.md)
-Persistent records tracking both visible repository commits and "invisible" non-code contributions (research, Miro user flows, prompt engineering, system design, and pitch preparation):
-- [Arnav Bisht](team/arnav-bisht.md) — Full-Stack Architecture, DevOps/Docker, Domain Boundaries, Backend Security (PBKDF2), Auth & RBAC.
-- [Diwakar Ujjwal](team/diwakar-ujjwal.md) — Frontend UX Architecture, Viewport Scroll Physics, Zero-Shift Tabs, Dynamic Navigation & Footer.
-- [Aarna](team/aarna605.md) — UI/UX Design System, Muted Rose Palette Tokens, Aspect-Ratio Media Integrity, AI Assistant Widget.
-- [Ravish Kansal](team/ravish-kansal.md) — Frontend UI Implementation, Landing Page Layout Assembly, Responsive Testing & QA.
+## Agent entry
 
----
-
-### 4. 🏛️ Architecture & Standards
-- [architecture.md](architecture.md) — System architecture diagram, responsibilities table, 17 database models schema, and mandatory operational guidelines for AI agents.
-- [domain-boundaries.md](domain-boundaries.md) — Modular monolith domain boundaries (`backend/app/modules/`) and LMS data ownership principles.
-- [development.md](development.md) — Quick start runbook, local environment setup, verification tests, and database management.
-- [adr/](adr/) — Architectural Decision Records:
-  - [`0001-modular-monolith-and-ai-boundary.md`](adr/0001-modular-monolith-and-ai-boundary.md)
-  - [`0002-backend-owns-lms-data.md`](adr/0002-backend-owns-lms-data.md)
-
----
-
-## 📌 Rules for AI Coding Agents
-AI coding agents working in this repository must consult [architecture.md](architecture.md) and the relevant [features/](features/) document before introducing architectural modifications, schema changes, or UI adjustments.
+Read `HANDOFF.md`, this index and `../LOCAL_SETUP.md` first, then application-specific `AGENTS.md` files. Use source, tests, migrations and actual execution to distinguish planned, implemented, tested and executed work. Keep ownership boundaries; no service implementation imports or cross-schema application queries. Update handoff/specs/changelog at meaningful milestones and before ending work. Never store credentials, provider keys or runtime learner artifacts in these documents.

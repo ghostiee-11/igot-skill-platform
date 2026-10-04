@@ -32,6 +32,8 @@ dist/
 *.sqlite3
 backend/karmayogi.db
 infra/storage/backups/
+infra/storage/artifacts/*
+!infra/storage/artifacts/.gitkeep
 backend/backend-server*.log
 backend/backend-dev*.log
 backend/recordings/

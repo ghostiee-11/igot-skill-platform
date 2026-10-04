@@ -1,6 +1,6 @@
 # Service architecture
 
-Status: accepted target for `rebuild/service-architecture`. Implementation and verification status are recorded in [migration status](../migration/status.md). A directory or endpoint existing is not proof of behavioral parity.
+Status: current service boundaries inherited from the service-architecture rebuild and extended by `rebuild/lms`. [Current local execution evidence](../local-runtime-2026-10-04.md) describes the running implementation; [migration status](../migration/status.md) distinguishes historical checks and remaining production/cutover work. A directory or endpoint existing is not proof of behavioral parity.
 
 ## Deployment boundaries
 
@@ -26,7 +26,15 @@ flowchart TD
 
 Identity, learning, assessment, competency, content and labs own durable records. AI and the gateway do not own a domain database. PostgreSQL is shared infrastructure, not a shared application model: each stateful service has its own schema, credentials and migration history.
 
-The frontend is an independently built application under `apps/frontend`. In this migration its existing screens, routes and feature internals are preserved. A fresh frontend is a separate, explicitly deferred project.
+The frontend is an independently built application under `apps/frontend`. Its route/feature organization came from the relocated application and has subsequent LMS changes; it is packaged as a non-root Next.js standalone server. A separate frontend redesign remains deferred.
+
+## Current local orchestration
+
+Compose provisions schema-owned PostgreSQL roles, waits for infrastructure health, and runs each stateful service's Alembic migrations before its API. A separate `local-seed` job checks/inserts the authored local catalogue and demo personas before the gateway starts. This development tooling uses explicit schema roles, preserves learner history and refuses conflicting catalogue IDs. It is not an application import or a production migration.
+
+Assessment currently delivers committed outbox events through a retrying HTTP dispatcher to idempotent learning/competency APIs. Learning stores resulting completion/certificate records and accepts UUID attempt references. The diagram's broker event transport remains a target for later work; RabbitMQ currently carries content-processing Celery jobs, consumed by `content-worker`. Content uses exclusive worker control/event subscription queues compatible with RabbitMQ 4.
+
+The gateway aggregates identity/profile data, learning certificates and competency skills for the copied `/api/profile/` shape, and supplies current identity/preferences to dashboard responses. Services retain domain data ownership. See [Docker runtime details](../operations/docker-local.md).
 
 ## Repository rules
 

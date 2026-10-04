@@ -67,7 +67,7 @@ class PlannedCourse(Base):
     course: Mapped[Course]=relationship()
 class Certificate(Base):
     __tablename__="certificates"; __table_args__=(UniqueConstraint("user_id","course_id"),T) if SCHEMA else (UniqueConstraint("user_id","course_id"),)
-    id: Mapped[int]=mapped_column(Integer,primary_key=True); user_id: Mapped[int]=mapped_column(Integer,index=True); course_id: Mapped[int]=mapped_column(ForeignKey(P+"courses.id",ondelete="CASCADE")); attempt_id: Mapped[int|None]=mapped_column(Integer); score_percent: Mapped[float]=mapped_column(Float); issued_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now); course: Mapped[Course]=relationship()
+    id: Mapped[int]=mapped_column(Integer,primary_key=True); user_id: Mapped[int]=mapped_column(Integer,index=True); course_id: Mapped[int]=mapped_column(ForeignKey(P+"courses.id",ondelete="CASCADE")); attempt_id: Mapped[str|None]=mapped_column(String(36)); score_percent: Mapped[float]=mapped_column(Float); issued_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now); course: Mapped[Course]=relationship()
 class ProcessedEvent(Base):
     __tablename__="processed_events"; __table_args__=T
     event_id: Mapped[str]=mapped_column(String(100),primary_key=True); event_type: Mapped[str]=mapped_column(String(100)); processed_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=now)
