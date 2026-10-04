@@ -1,5 +1,30 @@
 # 📜 Repository Changelog
 
+## 2026-10-04 — Runtime documentation and PR preparation
+
+- `[docs]` Reconciled root README, local setup, development workflow, service/Docker ownership, readiness and migration status. Archived the old monolith development guide with clear historical labelling; retained the pre-LMS main baseline instead of rewriting its history.
+- `[devops]` Aligned CI with module-based pytest invocation and the production webpack build. Added Dockerfile/Compose lifecycle comments and documented worker/one-shot states, volumes and explicit bootstrap versus legacy import.
+- Executed: 75 Python tests, four event-schema/eight API contract checks, 100 local Markdown links, complete sequential build/start, frontend production compilation/TypeScript and authenticated gateway smoke after restart. Repair commit `d851676` was published through [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); its GitHub state is the authoritative merge record. Continuity is in [handoff](HANDOFF.md).
+
+## 2026-10-04 — Dark hero action hover contrast
+
+- `[frontend]` Replaced the obsolete near-white hero hover fill with a shared translucent hover/focus token in `apps/frontend/src/app/globals.css`. My Learning and other glass actions retain readable white labels and mint icons against the dark banner.
+- Executed: rebuilt/restarted only the frontend; production build, TypeScript and 30 static pages passed. Browser confirmed actual My Learning hover and keyboard-focus styles; frontend health passed.
+
+## 2026-10-04 — Local Docker usability repair
+
+- `[devops]` Added sequential Windows build/start helper, restart policies for infrastructure, bounded standalone frontend packaging, and explicit local catalogue bootstrap before gateway startup. Reused branch-authored content; did not import learner history.
+- `[assessment]` Added retryable outbox delivery through idempotent learning/competency HTTP APIs. `[learning]` Migrated certificate attempt references to strings to retain assessment UUIDs.
+- `[gateway]` Restored profile certificate/skill aggregation and dashboard personalization. `[content]` Added the missing Celery worker and exclusive control/event queues for RabbitMQ 4.
+- Executed validation: gateway 36, assessment 15, learning 2 and content 5 tests passed; clean frontend production build passed. Full Compose startup and gateway smoke journeys passed, including durable certification, isolated lab execution, cyber notebook ingress and a RabbitMQ web-processing job. Browser verified login, catalogue, syllabus/player and concept feedback. See [local runtime receipt](local-runtime-2026-10-04.md).
+
+## 2026-09-29 — Behavioural interview multi-provider STT and real-time speech capture
+
+- **Scope**: `[frontend]` `[backend]`
+- **Multi-tier STT Fallback**: Upgraded `/api/behavioural/interview/transcribe` in `backend/app/modules/behavioural_cgp/router.py` to support multi-provider speech-to-text fallback (Sarvam AI $\rightarrow$ Groq Whisper $\rightarrow$ OpenAI Whisper $\rightarrow$ Google Gemini Flash $\rightarrow$ Browser Speech Recognition) using standard environment variables (`SARVAM_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`).
+- **Live Microphone Capture**: Enhanced `apps/frontend/src/features/behavioural/hooks/useSpeechCapture.ts` with 16 kHz Mono WAV PCM encoding, concurrent `SpeechRecognition` / `webkitSpeechRecognition` live stream, text retention without draft overwriting, and graceful error handling.
+- **Dependencies & Verification**: All required dependencies (`httpx`, `groq`, `python-multipart`) verified in `backend/requirements.txt`; verified with 156 backend tests passing and clean frontend build.
+
 ## 2026-09-23 — Behavioural interview LLM restored
 
 - Restored Groq follow-ups and transcript scoring. The former default model returned `model_not_found`; `openai/gpt-oss-120b` was verified with the configured key. Assessment still owns durable sessions and records the provider used for each turn.

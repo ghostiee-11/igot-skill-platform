@@ -44,11 +44,23 @@ export interface CoursePreview {
   has_assessment?: boolean;
 }
 
+export type LessonContentType =
+  | "video"
+  | "reading"
+  | "lab"
+  | "exercise"
+  | "ctf"
+  | "scenario"
+  | "case_study"
+  | "interview"
+  | "quiz"
+  | string;
+
 export interface LessonSummary {
   id: number;
   module_id?: number;
   title: string;
-  content_type: "video" | "reading" | "lab";
+  content_type: LessonContentType;
   duration_minutes: number;
   has_activity?: boolean;
   completed?: boolean;
@@ -85,15 +97,35 @@ export interface CourseDetail extends CoursePreview {
   } | null;
 }
 
+export interface LessonVideoMapping {
+  lesson_id: number;
+  source_video_id: string | null;
+  source_url: string | null;
+  source_video_title: string | null;
+  start_time: number | null;
+  end_time: number | null;
+  topic: string | null;
+  learning_objective: string | null;
+  duration_minutes: number;
+}
+
 export interface CurrentLesson {
   id: number;
   module_id: number;
   module_title: string;
   title: string;
-  content_type: "video" | "reading" | "lab";
+  content_type: LessonContentType;
   duration_minutes: number;
   content: string;
+  video_mapping?: LessonVideoMapping | null;
+  source_video_id?: string | null;
+  source_url?: string | null;
   video_url?: string;
+  video_start_time?: number | null;
+  video_end_time?: number | null;
+  source_video_title?: string | null;
+  topic?: string | null;
+  learning_objective?: string | null;
   completed: boolean;
   activity?: {
     question: string;

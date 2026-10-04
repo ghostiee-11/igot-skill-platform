@@ -21,6 +21,11 @@ import {
   ShieldCheck,
   CheckCircle2,
   Zap,
+  PlayCircle,
+  Brain,
+  FlaskConical,
+  ShieldAlert,
+  Scale,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +38,7 @@ import { DOMAIN_ACCENT_CLASS, domainForCategory } from "@/features/competency/do
 /** Accent stripe follows the course's competency domain */
 const getCategoryAccent = (category: string): string => {
   const domain = domainForCategory(category);
-  return domain ? DOMAIN_ACCENT_CLASS[domain] : "bg-slate-300";
+  return domain ? DOMAIN_ACCENT_CLASS[domain] : "bg-[#1E3A8A]";
 };
 
 const getDifficultyDot = (diff: string) => {
@@ -43,6 +48,13 @@ const getDifficultyDot = (diff: string) => {
     case "advanced":     return "bg-red-500";
     default:             return "bg-slate-400";
   }
+};
+
+const DOMAIN_ICONS: Record<string, any> = {
+  statistical: Brain,
+  technical: FlaskConical,
+  "digital governance": ShieldAlert,
+  behavioural: Scale,
 };
 
 function DiscoverContent() {
@@ -59,7 +71,46 @@ function DiscoverContent() {
   const [categories, setCategories]         = useState<string[]>([]);
   const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [enrollmentsMap, setEnrollmentsMap] = useState<Record<number, { progress: number; status: string }>>({});
   const [loading, setLoading]               = useState(true);
+
+  // Load user enrollments to show progress on cards
+  useEffect(() => {
+    fetchApi<{
+      my_learning_progress?: any;
+      continue_learning?: any;
+    }>("/dashboard/summary")
+      .then((dash) => {
+        // Also load profile to check enrollments
+        fetchApi("/profile/")
+          .then((prof) => {
+            const map: Record<number, { progress: number; status: string }> = {};
+            if (prof?.enrolled_courses) {
+              prof.enrolled_courses.forEach((c: any) => {
+                map[c.course_id] = { progress: c.progress_percent || 0, status: c.status || "in_progress" };
+              });
+            }
+            if (dash?.continue_learning) {
+              map[dash.continue_learning.course_id] = {
+                progress: dash.continue_learning.progress_percent || 0,
+                status: "in_progress",
+              };
+            }
+            setEnrollmentsMap(map);
+          })
+          .catch(() => {
+            if (dash?.continue_learning) {
+              setEnrollmentsMap({
+                [dash.continue_learning.course_id]: {
+                  progress: dash.continue_learning.progress_percent || 0,
+                  status: "in_progress",
+                },
+              });
+            }
+          });
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchCourses = () => {
     setLoading(true);
@@ -77,10 +128,13 @@ function DiscoverContent() {
       user_recent_searches: string[];
     }>(`/discover/courses?${params.toString()}`)
       .then((res) => {
-        setCourses(res.courses);
-        setCategories(res.categories);
-        setTrendingSearches(res.trending_searches);
-        setRecentSearches(res.user_recent_searches);
+        setCourses(res.courses || []);
+        // Guarantee the 4 official competency verticals
+        const coreCategories = ["Statistical", "Technical", "Digital Governance", "Behavioural"];
+        const mergedCategories = Array.from(new Set([...coreCategories, ...(res.categories || [])]));
+        setCategories(mergedCategories);
+        setTrendingSearches(res.trending_searches || []);
+        setRecentSearches(res.user_recent_searches || []);
       })
       .catch((err) => console.error("Error fetching discover courses:", err))
       .finally(() => setLoading(false));
@@ -96,19 +150,28 @@ function DiscoverContent() {
   const hasActiveFilters = query !== "" || category !== "all" || difficulty !== "all" || source !== "all" || sort !== "popular";
 
   const getCourseTitle = (course: CoursePreview) => {
-    const key = `course.${course.id}.title`;
-    const t2 = t(key);
-    return t2 !== key ? t2 : course.title;
+    if (language === "hi") {
+      const key = `course.${course.id}.title`;
+      const t2 = t(key);
+      if (t2 !== key) return t2;
+    }
+    return course.title;
   };
   const getCourseOverview = (course: CoursePreview) => {
-    const key = `course.${course.id}.overview`;
-    const t2 = t(key);
-    return t2 !== key ? t2 : course.overview;
+    if (language === "hi") {
+      const key = `course.${course.id}.overview`;
+      const t2 = t(key);
+      if (t2 !== key) return t2;
+    }
+    return course.overview;
   };
   const getCourseOrg = (course: CoursePreview) => {
-    const key = `org.${course.organization}`;
-    const t2 = t(key);
-    return t2 !== key ? t2 : course.organization;
+    if (language === "hi") {
+      const key = `org.${course.organization}`;
+      const t2 = t(key);
+      if (t2 !== key) return t2;
+    }
+    return course.organization;
   };
   const getCategoryLabel = (cat: string) => {
     const key = `category.${cat}`;
@@ -218,24 +281,34 @@ function DiscoverContent() {
       <section className="py-8 sm:py-10 flex-1 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-          {/* Category tabs */}
+          {/* Core Competency Domain Tabs */}
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs touch-pan-x">
             {[
-              { key: "all",     label: t("discover.all") },
-              { key: "popular", label: t("discover.popular") },
-              { key: "new",     label: t("discover.new") },
-              ...categories.map(c => ({ key: c, label: getCategoryLabel(c) })),
-            ].map((tab) => (
-              <button key={tab.key}
-                onClick={() => setCategory(tab.key)}
-                className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-semibold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                  category === tab.key
-                    ? "navy-teal-gradient text-white border-transparent shadow-sm"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                }`}>
-                {tab.label}
-              </button>
-            ))}
+              { key: "all", label: t("discover.all") || "All Courses", icon: BookOpen },
+              { key: "Statistical", label: "Statistical", icon: Brain },
+              { key: "Technical", label: "Technical", icon: FlaskConical },
+              { key: "Digital Governance", label: "Digital Governance", icon: ShieldAlert },
+              { key: "Behavioural", label: "Behavioural", icon: Scale },
+              { key: "popular", label: t("discover.popular") || "Popular", icon: Star },
+              { key: "new", label: t("discover.new") || "New", icon: Zap },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isSelected = category.toLowerCase() === tab.key.toLowerCase();
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setCategory(tab.key)}
+                  className={`relative px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-2 ${
+                    isSelected
+                      ? "navy-teal-gradient text-white border-transparent shadow-sm scale-105"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${isSelected ? "text-teal-300" : "text-slate-400"}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Filter ribbon */}
@@ -296,71 +369,111 @@ function DiscoverContent() {
             </div>
           ) : courses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {courses.map((course) => (
-                <div key={course.id}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col card-hover-lift shadow-sm group">
-                  {/* Category accent stripe */}
-                  <div className={`h-1 w-full ${getCategoryAccent(course.category)}`} />
+              {courses.map((course) => {
+                const enrollment = enrollmentsMap[course.id];
+                const isEnrolled = !!enrollment;
+                const progress = enrollment?.progress || 0;
+                const DomainIcon = DOMAIN_ICONS[course.category?.toLowerCase()] || BookOpen;
 
-                  <div className="p-6 flex flex-col flex-1">
-                    {/* Top metadata */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="flex items-center gap-1 text-xs text-slate-400 font-medium">
-                        <Clock className="h-3.5 w-3.5 text-slate-300" />
-                        {course.duration_hours} {t("discover.hours")}
-                      </span>
-                    </div>
+                return (
+                  <div key={course.id}
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col card-hover-lift shadow-sm group">
+                    {/* Category accent stripe */}
+                    <div className={`h-1.5 w-full ${getCategoryAccent(course.category)}`} />
 
-                    {/* Title */}
-                    <h3 className="text-base font-bold text-slate-900 leading-snug mb-2 line-clamp-2 group-hover:text-[#1E3A8A] transition-colors">
-                      {getCourseTitle(course)}
-                    </h3>
-
-                    {/* Overview */}
-                    <p className="text-xs text-slate-500 line-clamp-3 mb-4 leading-relaxed flex-1">
-                      {getCourseOverview(course)}
-                    </p>
-
-                    {/* Metadata */}
-                    <div className="space-y-1.5 text-xs text-slate-400 pt-3 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span>{t("discover.accreditedBody")}</span>
-                        <span className="font-semibold text-slate-700 text-right truncate max-w-[160px]">
-                          {getCourseOrg(course)}
+                    <div className="p-6 flex flex-col flex-1">
+                      {/* Top metadata */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                          <DomainIcon className="h-3 w-3 text-[#1E3A8A]" />
+                          {course.category}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-slate-400 font-medium">
+                          <Clock className="h-3.5 w-3.5 text-slate-300" />
+                          {course.duration_hours} {t("discover.hours")}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>{t("discover.targetDifficulty")}</span>
-                        <span className="flex items-center gap-1.5 font-semibold text-slate-700">
-                          <span className={`h-2 w-2 rounded-full ${getDifficultyDot(course.difficulty)}`} />
-                          {getDifficultyLabel(course.difficulty)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>{t("discover.modules")}</span>
-                        <span className="font-semibold text-slate-700">{course.modules_count} {t("discover.units")}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Card Footer */}
-                  <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                      <span className="font-bold text-slate-800">{course.rating}</span>
-                      <span className="text-slate-300">•</span>
-                      <span>{course.enrolled_count} {t("discover.enrolled")}</span>
+                      {/* Title */}
+                      <h3 className="text-base font-bold text-slate-900 leading-snug mb-2 line-clamp-2 group-hover:text-[#1E3A8A] transition-colors">
+                        <a href={`/courses/${course.id}`} className="hover:underline">
+                          {getCourseTitle(course)}
+                        </a>
+                      </h3>
+
+                      {/* Overview */}
+                      <p className="text-xs text-slate-500 line-clamp-3 mb-4 leading-relaxed flex-1">
+                        {getCourseOverview(course)}
+                      </p>
+
+                      {/* Progress bar if enrolled */}
+                      {isEnrolled && (
+                        <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600">Learning Progress</span>
+                            <span className="text-[#1E3A8A]">{progress}%</span>
+                          </div>
+                          <div className="relative h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="absolute inset-y-0 left-0 rounded-full navy-teal-gradient transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Metadata */}
+                      <div className="space-y-1.5 text-xs text-slate-400 pt-3 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <span>{t("discover.accreditedBody")}</span>
+                          <span className="font-semibold text-slate-700 text-right truncate max-w-[160px]">
+                            {getCourseOrg(course)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>{t("discover.targetDifficulty")}</span>
+                          <span className="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span className={`h-2 w-2 rounded-full ${getDifficultyDot(course.difficulty)}`} />
+                            {getDifficultyLabel(course.difficulty)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>{t("discover.modules")}</span>
+                          <span className="font-semibold text-slate-700">{course.modules_count || 3} {t("discover.units")}</span>
+                        </div>
+                      </div>
                     </div>
-                    <a href={`/courses/${course.id}`}>
-                      <Button size="sm"
-                        className="navy-teal-gradient text-white text-xs font-bold rounded-xl h-8 px-4 border-0 shadow-sm cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1">
-                        {t("discover.viewCourse")}
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </a>
+
+                    {/* Card Footer */}
+                    <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                        <span className="font-bold text-slate-800">{course.rating}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>{course.enrolled_count} {t("discover.enrolled")}</span>
+                      </div>
+                      
+                      {isEnrolled ? (
+                        <a href={`/learn/${course.id}`}>
+                          <Button size="sm"
+                            className="navy-teal-gradient text-white text-xs font-bold rounded-xl h-8 px-4 border-0 shadow-sm cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1.5">
+                            <PlayCircle className="h-3.5 w-3.5" />
+                            Continue Learning
+                          </Button>
+                        </a>
+                      ) : (
+                        <a href={`/courses/${course.id}`}>
+                          <Button size="sm"
+                            className="navy-teal-gradient text-white text-xs font-bold rounded-xl h-8 px-4 border-0 shadow-sm cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1">
+                            {t("discover.viewCourse")}
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="py-20 text-center bg-white rounded-2xl border border-slate-200 max-w-xl mx-auto p-8 shadow-sm">

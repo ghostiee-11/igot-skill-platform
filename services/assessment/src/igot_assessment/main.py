@@ -254,15 +254,15 @@ def technical_labs(_:Principal=Depends(current_principal),db:Session=Depends(get
     return [present_template(number,template) for number,template in template_catalogue(db)]
 
 @app.get("/v1/technical-courses/labs/{lab_id}")
-def technical_lab(lab_id:int,_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
-    template=find_template(db,lab_id)
-    if not template:raise HTTPException(404,"Lab not found")
-    return present_template(lab_id,template,detail=True)
+def technical_lab(lab_id:str,_:Principal=Depends(current_principal),db:Session=Depends(get_db)):
+    num_id,template=find_template(db,lab_id)
+    if not template or num_id is None:raise HTTPException(404,"Lab not found")
+    return present_template(num_id,template,detail=True)
 
 @app.post("/v1/technical-courses/labs/{lab_id}/execute")
-async def grade_technical_lab(lab_id:int,req:LabSubmission,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
-    template=find_template(db,lab_id)
-    if not template:raise HTTPException(404,"Lab not found")
+async def grade_technical_lab(lab_id:str,req:LabSubmission,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    num_id,template=find_template(db,lab_id)
+    if not template or num_id is None:raise HTTPException(404,"Lab not found")
     if len(req.code)>12000:raise HTTPException(413,"Submitted code is too large")
     try:
         async with httpx.AsyncClient(timeout=90) as client:
@@ -271,12 +271,12 @@ async def grade_technical_lab(lab_id:int,req:LabSubmission,_:Principal=Depends(c
     except httpx.HTTPStatusError as exc:raise HTTPException(exc.response.status_code,exc.response.text) from exc
     except (httpx.RequestError,ValueError) as exc:raise HTTPException(503,"Lab runtime is unavailable") from exc
     passed=result["passed_tests_count"];total=result["total_tests_count"]
-    return {"lab_id":lab_id,**result,"feedback":"All test cases passed!" if passed==total and total else f"{passed} of {total} test cases passed."}
+    return {"lab_id":num_id,**result,"feedback":"All test cases passed!" if passed==total and total else f"{passed} of {total} test cases passed."}
 
 @app.post("/v1/technical-courses/labs/{lab_id}/assistant")
-async def technical_lab_assistant(lab_id:int,req:LabAssistantRequest,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
-    template=find_template(db,lab_id)
-    if not template:raise HTTPException(404,"Lab not found")
+async def technical_lab_assistant(lab_id:str,req:LabAssistantRequest,_:Principal=Depends(current_principal),db:Session=Depends(get_db),authorization:str|None=Header(None)):
+    num_id,template=find_template(db,lab_id)
+    if not template or num_id is None:raise HTTPException(404,"Lab not found")
     prompt=f"Lab: {template.title}\nInstructions: {template.instructions_template}\nConstraints: {template.constraints}\nCurrent code:\n{req.current_code[:4000]}\nLatest output: {(req.active_output or '')[:1000]}\nLearner question: {req.message[:1000]}"
     messages=[{"role":"system","content":"You are a Socratic Python lab coach. Give one conceptual hint and one next action. Never provide completed code, hidden tests, or the reference solution. Keep it under 140 words."},{"role":"user","content":prompt}]
     response,provider=await _interview_ai(messages,{"response":"one concise coaching hint"},authorization)

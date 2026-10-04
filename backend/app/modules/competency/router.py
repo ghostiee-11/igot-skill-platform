@@ -6,9 +6,9 @@ from app.core.security import get_current_active_user
 from app.models.models import (
     User, CompetencyProfile, GapAnalysis, CompetencyDomain, Competency, UserCompetencyScore, Course, Recommendation,
 )
-from app.agents.competency.gap_agent import run_gap_analysis, collect_current_levels
+from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
 from app.agents.igot.client import domain_category_filter
-from .schemas import GapAnalysisResponse, CompetencyProfileSchema, DomainGapSchema
+from .schemas import GapAnalysisResponse, CompetencyProfileSchema, DomainGapSchema, TraceableProfileResponse
 
 router = APIRouter(prefix="/competency", tags=["competency"])
 
@@ -23,27 +23,14 @@ def get_domain_detail(
     if not domain:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Competency domain not found")
 
-    levels = collect_current_levels(db, current_user.id)
-    declared_sources = {
-        row.competency_id: row.evidence_source
-        for row in db.query(UserCompetencyScore).filter_by(user_id=current_user.id).all()
-    }
-    competencies = []
-    for competency in db.query(Competency).filter_by(domain_id=domain.id).order_by(Competency.id).all():
-        level = levels.get(competency.id, 0.0)
-        competencies.append({
-            "code": competency.code,
-            "name": competency.name,
-            "level": round(level, 2),
-            "evidence_source": declared_sources.get(competency.id) or ("assessment" if level else None),
-        })
+    traceable = AttentiveKnowledgeTracingEngine.get_full_traceable_profile(db, current_user.id)
+    domain_comps = [c for c in traceable["competencies"] if c["domain_code"] == domain_code]
 
-    latest = (
-        db.query(GapAnalysis)
-        .filter_by(user_id=current_user.id, domain_id=domain.id)
-        .order_by(GapAnalysis.generated_at.desc())
-        .first()
-    )
+    latest_gap = next((d for d in traceable["domains"] if d["code"] == domain_code), None)
+    target_level = latest_gap["target_level"] if latest_gap else traceable["target_level"]
+    current_level = latest_gap["current_level"] if latest_gap else 0.0
+    gap_value = latest_gap["gap"] if latest_gap else 0.0
+
     recommendations = {
         r.course_id: r for r in db.query(Recommendation).filter_by(user_id=current_user.id).all() if r.course_id
     }
@@ -64,11 +51,11 @@ def get_domain_detail(
 
     return {
         "domain": {"code": domain.code, "name": domain.name, "description": domain.description},
-        "target_level": latest.target_level if latest else None,
-        "current_level": latest.current_level if latest else None,
-        "gap": latest.gap if latest else None,
-        "analyzed_at": latest.generated_at.isoformat() if latest and latest.generated_at else None,
-        "competencies": competencies,
+        "target_level": target_level,
+        "current_level": current_level,
+        "gap": gap_value,
+        "analyzed_at": traceable["last_traced_at"],
+        "competencies": domain_comps,
         "courses": courses,
         "is_default_framework": True,
     }
@@ -90,17 +77,40 @@ def analyze_competency(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    result = run_gap_analysis(db, current_user.id)
+    """
+    Executes full Attentive Knowledge Tracing (AKT), recomputes topic mastery,
+    derives skill gaps against role targets, and regenerates smart recommendations.
+    """
+    result = AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+    AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+
+    profile = result["profile"]
     return GapAnalysisResponse(
         profile=CompetencyProfileSchema(
-            statistical_score=result["profile"].statistical_score,
-            technical_score=result["profile"].technical_score,
-            digital_governance_score=result["profile"].digital_governance_score,
-            behavioural_score=result["profile"].behavioural_score,
-            last_computed_at=result["profile"].last_computed_at.isoformat() if result["profile"].last_computed_at else None,
+            statistical_score=profile.statistical_score,
+            technical_score=profile.technical_score,
+            digital_governance_score=profile.digital_governance_score,
+            behavioural_score=profile.behavioural_score,
+            last_computed_at=profile.last_computed_at.isoformat() if profile.last_computed_at else None,
         ),
         gaps=[_serialize_gap(g) for g in result["gaps"]],
+        target_level=result["target_level"],
+        overall_average_level=round(
+            sum(result["computed_levels"].values()) / max(len(result["computed_levels"]), 1), 2
+        ),
     )
+
+
+@router.get("/traceable", response_model=TraceableProfileResponse)
+def get_traceable_knowledge_profile(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns granular competency mastery scores with evidence history
+    and Strong / Developing / Gap classifications.
+    """
+    return AttentiveKnowledgeTracingEngine.get_full_traceable_profile(db, current_user.id)
 
 
 @router.get("/profile", response_model=CompetencyProfileSchema)
@@ -110,7 +120,10 @@ def get_competency_profile(
 ):
     profile = db.query(CompetencyProfile).filter_by(user_id=current_user.id).first()
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No competency profile yet. Call POST /competency/analyze first.")
+        # Run AKT on demand if no profile exists yet
+        result = AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+        profile = result["profile"]
+
     return CompetencyProfileSchema(
         statistical_score=profile.statistical_score,
         technical_score=profile.technical_score,
@@ -125,12 +138,16 @@ def get_competency_gaps(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    # latest gap_analyses row per domain for this user
     all_rows = db.query(GapAnalysis).filter_by(user_id=current_user.id).order_by(GapAnalysis.generated_at.desc()).all()
+    if not all_rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No competency gap analysis found for this learner. Run /analyze first."
+        )
+
     latest_by_domain = {}
     for row in all_rows:
         if row.domain_id not in latest_by_domain:
             latest_by_domain[row.domain_id] = row
-    if not latest_by_domain:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No gap analysis yet. Call POST /competency/analyze first.")
+
     return [_serialize_gap(g) for g in latest_by_domain.values()]

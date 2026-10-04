@@ -13,11 +13,25 @@ def template_catalogue(db: Session) -> list[tuple[int, TechnicalLabTemplate]]:
     return [(1001 + index, template) for index, template in enumerate(templates)]
 
 
-def find_template(db: Session, lab_id: int) -> TechnicalLabTemplate | None:
-    return next((template for number, template in template_catalogue(db) if number == lab_id), None)
+def find_template(db: Session, lab_id: int | str) -> tuple[int, TechnicalLabTemplate] | tuple[None, None]:
+    catalogue = template_catalogue(db)
+    lab_str = str(lab_id).strip()
+    if lab_str.isdigit():
+        num_id = int(lab_str)
+        for number, template in catalogue:
+            if number == num_id:
+                return number, template
+    for number, template in catalogue:
+        if template.id.lower() == lab_str.lower():
+            return number, template
+    clean = lab_str.lower().replace("_", "-")
+    for number, template in catalogue:
+        if clean in template.id.lower() or template.id.lower() in clean:
+            return number, template
+    return None, None
 
 
-def present_template(lab_id: int, template: TechnicalLabTemplate, detail: bool = False) -> dict:
+def present_template(lab_id: int | str, template: TechnicalLabTemplate, detail: bool = False) -> dict:
     objective = f"Master {template.skill} in practical public administration workflows."
     match = re.search(r"\bdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*\(", template.starter_code_template)
     function_name = match.group(1) if match else "process_solution"

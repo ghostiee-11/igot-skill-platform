@@ -75,15 +75,21 @@ export default function HomePage() {
   const futurePlanned = data?.future_planned || [];
 
   const getCourseTitle = (id: number, fallback: string) => {
-    const key = `course.${id}.title`;
-    const translated = t(key);
-    return translated !== key ? translated : fallback;
+    if (language === "hi") {
+      const key = `course.${id}.title`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return fallback;
   };
 
   const getCourseOrg = (org: string) => {
-    const key = `org.${org}`;
-    const translated = t(key);
-    return translated !== key ? translated : org;
+    if (language === "hi") {
+      const key = `org.${org}`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return org;
   };
 
   const getDifficultyStyle = (difficulty: string) => {
@@ -138,7 +144,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-              <a href="/discover" className="w-full sm:w-auto">
+              <a href="/courses" className="w-full sm:w-auto">
                 <Button size="sm"
                   className="w-full sm:w-auto h-10 px-5 rounded-xl bg-white hover:bg-slate-50 text-[#1E3A8A] text-xs font-bold shadow-sm transition-all cursor-pointer border-0 hover:scale-105 flex items-center justify-center gap-2">
                   <Compass className="h-4 w-4" />
@@ -179,8 +185,12 @@ export default function HomePage() {
                   </CardDescription>
                 </div>
                 {continueCourse && (
-                  <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
-                    {t("home.inProgress")}
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    continueCourse.is_completed
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-teal-700 bg-teal-50 border-teal-200"
+                  }`}>
+                    {continueCourse.is_completed ? t("home.completed") : t("home.inProgress")}
                   </span>
                 )}
               </CardHeader>
@@ -196,11 +206,13 @@ export default function HomePage() {
                           {continueCourse.current_module} • {continueCourse.current_lesson}
                         </p>
                       </div>
-                      <a href={`/learn/${continueCourse.course_id}`}>
+                      <a href={continueCourse.last_lesson_id ? `/learn/${continueCourse.course_id}?lessonId=${continueCourse.last_lesson_id}` : `/learn/${continueCourse.course_id}`}>
                         <Button size="sm"
                           className="navy-teal-gradient text-white text-xs font-bold rounded-xl h-9 px-4 gap-1.5 shadow-sm cursor-pointer border-0 hover:opacity-90 transition-opacity">
                           <PlayCircle className="h-3.5 w-3.5" />
-                          {t("home.resumeCourse")}
+                          {continueCourse.is_completed
+                            ? "Review Course"
+                            : (continueCourse.progress_percent > 0 ? t("home.resumeCourse") : "Start Learning")}
                         </Button>
                       </a>
                     </div>
@@ -220,7 +232,7 @@ export default function HomePage() {
                 ) : (
                   <div className="py-8 text-center space-y-3">
                     <p className="text-xs text-slate-400">{t("home.noCourseInProgress")}</p>
-                    <a href="/discover">
+                    <a href="/courses">
                       <Button size="sm" variant="outline"
                         className="text-xs rounded-xl border-slate-300 text-[#1E3A8A] hover:bg-slate-50 cursor-pointer">
                         {t("home.exploreEnroll")} <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -297,7 +309,7 @@ export default function HomePage() {
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">{t("home.recommendedSubtitle")}</p>
               </div>
-              <a href="/discover" className="text-xs font-bold text-[#1E3A8A] hover:underline flex items-center gap-1 cursor-pointer">
+              <a href="/courses" className="text-xs font-bold text-[#1E3A8A] hover:underline flex items-center gap-1 cursor-pointer">
                 {t("home.viewAll")} <ChevronRight className="h-3.5 w-3.5" />
               </a>
             </div>

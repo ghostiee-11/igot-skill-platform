@@ -1,9 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .routing import RouteTarget, resolve_legacy_path, resolve_namespaced_path
@@ -82,6 +84,51 @@ async def _proxy(request: Request, target: RouteTarget) -> Response:
     return response
 
 
+async def _read_service(request: Request, service: str, path: str):
+    try:
+        response = await request.app.state.client.get(
+            f"{settings.service_urls[service]}{path}", headers=_forward_request_headers(request)
+        )
+    except httpx.TimeoutException as exc:
+        raise HTTPException(504, f"{service} service timed out") from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(503, f"{service} service is unavailable") from exc
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise HTTPException(502, f"{service} returned an invalid response") from exc
+    if not response.is_success:
+        raise HTTPException(response.status_code, data.get("detail", f"{service} request failed") if isinstance(data, dict) else data)
+    return data
+
+
+async def _profile(request: Request) -> Response:
+    identity = await _read_service(request, "identity", "/v1/profiles/me")
+    certificates, skills = await asyncio.gather(
+        _read_service(request, "learning", "/v1/certificates"),
+        _read_service(request, "competency", "/v1/competency/skills"),
+    )
+    return JSONResponse({**identity, "certificates": certificates, "skills": skills})
+
+
+async def _dashboard(request: Request) -> Response:
+    identity, dashboard, skills = await asyncio.gather(
+        _read_service(request, "identity", "/v1/profiles/me"),
+        _read_service(request, "learning", "/v1/dashboard/summary"),
+        _read_service(request, "competency", "/v1/competency/skills"),
+    )
+    profile = identity["profile"]
+    dashboard["learner"].update(id=identity["user_id"], full_name=identity["full_name"], email=identity["email"],
+                                role=identity["role"], designation=profile.get("designation") or "Civil Servant",
+                                department=profile.get("department") or "Official Statistical System")
+    target = profile.get("daily_goal_minutes") or 30
+    dashboard["todays_goals"].update(target_minutes=target,
+                                    percent=min(100, int(dashboard["todays_goals"]["achieved_minutes"] / target * 100)))
+    dashboard["learning_streak"]["streak_days"] = profile.get("current_streak_days") or 0
+    dashboard["competencies"] = {"skills_count": len(skills), "top_skills": skills[:5]}
+    return JSONResponse(dashboard)
+
+
 @app.get("/health", tags=["platform"])
 @app.get("/api/health", tags=["platform"])
 async def health() -> dict[str, str]:
@@ -102,6 +149,11 @@ async def legacy_proxy(path: str, request: Request) -> Response:
     target = resolve_legacy_path(path, request.method)
     if target is None:
         raise HTTPException(status_code=404, detail="No service owns this legacy API path")
+    if request.method == "GET":
+        if target == RouteTarget("identity", "/v1/profile/"):
+            return await _profile(request)
+        if target == RouteTarget("learning", "/v1/dashboard/summary"):
+            return await _dashboard(request)
     return await _proxy(request, target)
 
 

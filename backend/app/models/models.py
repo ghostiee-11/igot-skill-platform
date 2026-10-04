@@ -115,10 +115,15 @@ class Lesson(Base):
     id = Column(Integer, primary_key=True, index=True)
     module_id = Column(Integer, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False)
+    topic = Column(String(100), nullable=True)
+    learning_objective = Column(Text, nullable=True)
     content_type = Column(String(50), default="reading")  # video, reading, lab
     duration_minutes = Column(Integer, default=15)
     content = Column(Text, nullable=False)  # Markdown text or video transcript
     video_url = Column(String(500), nullable=True)
+    video_start_time = Column(Integer, default=0, nullable=True)  # Start timestamp in seconds
+    video_end_time = Column(Integer, nullable=True)  # End timestamp in seconds
+    source_video_title = Column(String(255), nullable=True)  # Curated source lecture title
     
     # In-lesson Practice Activity (per Section 4.3 conflict #4)
     activity_question = Column(Text, nullable=True)

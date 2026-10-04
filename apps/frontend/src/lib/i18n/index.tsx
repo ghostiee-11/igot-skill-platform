@@ -452,12 +452,12 @@ const translations: Translations = {
 
   // Course Titles & Overviews
   "course.1.title": {
-    en: "Fundamentals of National Sample Surveys (NSS)",
-    hi: "राष्ट्रीय नमूना सर्वेक्षण (एनएसएस) के मूलभूत सिद्धांत",
+    en: "Civil Service Conduct, Administrative Ethics & Interpersonal Leadership",
+    hi: "सिविल सेवा आचरण, प्रशासनिक नैतिकता एवं पारस्परिक नेतृत्व",
   },
   "course.1.overview": {
-    en: "Master the methodological framework of large-scale socio-economic surveys conducted by India's National Sample Survey Office (NSSO). Covers multi-stage stratified sampling, field schedules, non-sampling error minimization, and computer-assisted personal interviewing (CAPI).",
-    hi: "भारत के राष्ट्रीय नमूना सर्वेक्षण कार्यालय (एनएसएसओ) द्वारा आयोजित बड़े पैमाने के सामाजिक-आर्थिक सर्वेक्षणों के पद्धतिगत ढांचे में दक्षता। बहु-स्तरीय स्तरीकृत नमूनाकरण, फील्ड शेड्यूल, गैर-नमूनाकरण त्रुटि न्यूनीकरण और कंप्यूटर-सहायता प्राप्त व्यक्तिगत साक्षात्कार (सीएपीआई)।",
+    en: "Master statutory administrative ethics, CCS (Conduct) Rules 1964, Rule 14 disciplinary inquiries, natural justice doctrines, public grievance redressal, high-stakes stakeholder negotiation, and oral civil service defense.",
+    hi: "सांविधिक प्रशासनिक नैतिकता, सीसीएस (आचरण) नियमावली 1964, नियम 14 अनुशासनात्मक जांच, नैसर्गिक न्याय सिद्धांत, लोक शिकायत निवारण, उच्च-दांव हितधारक वार्ता और मौखिक सिविल सेवा रक्षा में महारत हासिल करें।",
   },
   "course.2.title": {
     en: "Compilation of Consumer Price Index (CPI) & Inflation Metrics",
@@ -468,28 +468,20 @@ const translations: Translations = {
     hi: "अखिल भारतीय उपभोक्ता मूल्य सूचकांक (ग्रामीण, शहरी, संयुक्त) के संकलन की व्यापक व्यावहारिक मार्गदर्शिका। वस्तु टोकरी भारांकन, लास्पेयर्स सूचकांक निर्माण, मूल्य अनुपातों का ज्यामितीय माध्य, मौसमी वस्तुओं का प्रबंधन और मकान किराया आरोपण सीखें।",
   },
   "course.3.title": {
-    en: "Data Quality Frameworks & Official Statistics in India",
-    hi: "डेटा गुणवत्ता रूपरेखा एवं भारत में आधिकारिक सांख्यिकी",
+    en: "Python and Data Cleaning Pipelines for Public Policy",
+    hi: "लोक नीति हेतु पायथन एवं डेटा सफाई पाइपलाइन",
   },
   "course.3.overview": {
-    en: "Aligning Indian official statistics with the United Nations National Quality Assurance Framework (UN-NQAF). Study the 19 principles of statistical integrity, confidentiality safeguards, revision policies, and metadata standards.",
-    hi: "भारतीय आधिकारिक सांख्यिकी को संयुक्त राष्ट्र राष्ट्रीय गुणवत्ता आश्वासन रूपरेखा (यूएन-एनक्यूएएफ) के अनुरूप बनाना। सांख्यिकीय सत्यनिष्ठा के 19 सिद्धांतों, गोपनीयता सुरक्षा उपायों, संशोधन नीतियों और मेटाडेटा मानकों का अध्ययन करें।",
+    en: "Modern automated data cleaning and reproducible data processing for civil service analysts using Pandas, NumPy, and Statsmodels. Automate messy survey ingestion, missing data imputation, schema validation, and pipeline orchestration.",
+    hi: "पांडास, नम्पाय और स्टैट्समॉडल का उपयोग करते हुए सिविल सेवा विश्लेषकों हेतु आधुनिक स्वचालित डेटा सफाई एवं प्रतिलिपि प्रस्तुत करने योग्य डेटा प्रसंस्करण।",
   },
   "course.4.title": {
-    en: "Digital Governance & Public Financial Management System (PFMS)",
-    hi: "डिजिटल प्रशासन एवं सार्वजनिक वित्तीय प्रबंधन प्रणाली (पीएफएमएस)",
+    en: "Digital Governance, Cyber Defense & Public Digital Architecture",
+    hi: "डिजिटल शासन, साइबर सुरक्षा एवं सार्वजनिक डिजिटल अवसंरचना",
   },
   "course.4.overview": {
-    en: "Direct Benefit Transfer (DBT), treasury integration, electronic bill processing, and expenditure tracking through PFMS. Authorized course accredited by ISTM for all central government employees.",
-    hi: "प्रत्यक्ष लाभ अंतरण (डीबीटी), राजकोष एकीकरण, इलेक्ट्रॉनिक बिल प्रसंस्करण और पीएफएमएस के माध्यम से व्यय ट्रैकिंग। सभी केंद्रीय सरकारी कर्मचारियों के लिए आईएसटीएम द्वारा मान्यता प्राप्त अधिकृत पाठ्यक्रम।",
-  },
-  "course.5.title": {
-    en: "Python and Statistical Computing for Public Policy",
-    hi: "लोक नीति हेतु पायथन एवं सांख्यिकीय संगणना",
-  },
-  "course.5.overview": {
-    en: "Modern data analysis for official statisticians using Pandas, NumPy, and Statsmodels. Automate data cleaning, compute econometric models, and generate reproducible policy briefs.",
-    hi: "पांडास, नम्पाय और स्टैट्समॉडल्स का उपयोग कर आधिकारिक सांख्यिकीविदों हेतु आधुनिक डेटा विश्लेषण। डेटा सफाई स्वचालित करें, अर्थमितीय मॉडल तैयार करें और प्रतिलिपि प्रस्तुत करने योग्य नीति संक्षिप्त विवरण तैयार करें।",
+    en: "Hands-on cyber defense sandbox, CERT-In compliance, DPDP Act 2023 data fiduciary obligations, sovereign cloud architecture (MeghRaj), PKI digital signatures, and India Stack digital public infrastructure.",
+    hi: "व्यावहारिक साइबर सुरक्षा सैंडबॉक्स, सीईआरटी-इन अनुपालन, डीपीडीपी अधिनियम 2023 डेटा न्यासी दायित्व, संप्रभु क्लाउड अवसंरचना (मेघराज), पीकेआई डिजिटल हस्ताक्षर और इंडिया स्टैक।",
   },
 
   // Accredited Organizations

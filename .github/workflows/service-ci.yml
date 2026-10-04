@@ -58,7 +58,7 @@ jobs:
         run: uv sync --frozen --extra "${{ matrix.extra }}"
       - name: Test service
         working-directory: ${{ matrix.path }}
-        run: uv run --frozen pytest -q
+        run: uv run --frozen python -m pytest -q
 
   compose-config:
     runs-on: ubuntu-latest

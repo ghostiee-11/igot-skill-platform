@@ -1,3 +1,5 @@
+# Local development topology. See docs/operations/docker-local.md for lifecycle,
+# image ownership, storage and the distinction between health and feature readiness.
 name: igot-skill-platform
 
 x-service-environment: &service-environment
@@ -17,7 +19,8 @@ x-service-defaults: &service-defaults
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-bookworm
+    restart: unless-stopped
     environment:
       POSTGRES_DB: igot
       POSTGRES_USER: igot_admin
@@ -35,7 +38,8 @@ services:
     networks: [platform]
 
   rabbitmq:
-    image: rabbitmq:4-management-alpine
+    image: rabbitmq:4-management
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: igot
       RABBITMQ_DEFAULT_PASS: igot
@@ -87,6 +91,7 @@ services:
 
   assessment:
     <<: *service-defaults
+    image: igot-skill-platform-assessment:latest
     build: ../../services/assessment
     environment:
       <<: *service-environment
@@ -142,6 +147,7 @@ services:
 
   content:
     <<: *service-defaults
+    image: igot-skill-platform-content:latest
     build: ../../services/content
     environment:
       <<: *service-environment
@@ -157,6 +163,22 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+
+  content-worker:
+    # Same owned image/schema as content; consume accepted jobs separately from HTTP.
+    <<: *service-defaults
+    image: igot-skill-platform-content:latest
+    build: ../../services/content
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://content_service:content_service@postgres:5432/igot
+      DATABASE_SCHEMA: content
+    volumes:
+      - ../storage/artifacts:/var/lib/igot/artifacts
+    command: ["celery", "-A", "igot_content.tasks:celery", "worker", "--loglevel=INFO", "--concurrency=1"]
+    depends_on:
+      content: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
 
   lab-workspace-image:
     image: igot/lab-workspace:local
@@ -204,6 +226,51 @@ services:
       timeout: 4s
       retries: 12
 
+  local-seed:
+    # Explicit, repeatable local data job after migrations; never a legacy-data import.
+    image: igot-skill-platform-assessment:latest
+    build: ../../services/assessment
+    restart: "no"
+    command: ["python", "/seed/seed.py"]
+    environment:
+      LOCAL_DEMO_SEED_ENABLED: ${LOCAL_DEMO_SEED_ENABLED:-true}
+      DEMO_ACCOUNTS_ENABLED: ${DEMO_ACCOUNTS_ENABLED:-true}
+      DEMO_LEARNER_EMAIL: ${DEMO_LEARNER_EMAIL:-rajesh.kumar@mospi.gov.in}
+      DEMO_LEARNER_PASSWORD: ${DEMO_LEARNER_PASSWORD:-Learner@123}
+      DEMO_ADMIN_EMAIL: ${DEMO_ADMIN_EMAIL:-admin@karmayogi.gov.in}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-Admin@123}
+      DEMO_NEW_OFFICER_EMAIL: ${DEMO_NEW_OFFICER_EMAIL:-priya.sharma@mospi.gov.in}
+      DEMO_NEW_OFFICER_PASSWORD: ${DEMO_NEW_OFFICER_PASSWORD:-Learner@123}
+      IDENTITY_DATABASE_URL: postgresql+psycopg://identity_service:identity_service@postgres:5432/igot
+      LEARNING_DATABASE_URL: postgresql+psycopg://learning_service:learning_service@postgres:5432/igot
+      ASSESSMENT_DATABASE_URL: postgresql+psycopg://assessment_service:assessment_service@postgres:5432/igot
+      COMPETENCY_DATABASE_URL: postgresql+psycopg://competency_service:competency_service@postgres:5432/igot
+    volumes:
+      - ../seed:/seed:ro
+    depends_on:
+      identity: {condition: service_healthy}
+      learning: {condition: service_healthy}
+      assessment: {condition: service_healthy}
+      competency: {condition: service_healthy}
+    networks: [platform]
+
+  assessment-events:
+    # Durable assessment outbox delivery currently uses idempotent internal HTTP APIs.
+    <<: *service-defaults
+    image: igot-skill-platform-assessment:latest
+    build: ../../services/assessment
+    environment:
+      <<: *service-environment
+      DATABASE_URL: postgresql+psycopg://assessment_service:assessment_service@postgres:5432/igot
+      LEARNING_URL: http://learning:8102
+      COMPETENCY_URL: http://competency:8104
+    command: ["python", "-m", "igot_assessment.dispatch_events"]
+    depends_on:
+      assessment: {condition: service_healthy}
+      learning: {condition: service_healthy}
+      competency: {condition: service_healthy}
+      local-seed: {condition: service_completed_successfully}
+
   gateway:
     restart: unless-stopped
     build: ../../apps/gateway
@@ -224,6 +291,7 @@ services:
       ai: {condition: service_healthy}
       content: {condition: service_healthy}
       labs: {condition: service_healthy}
+      local-seed: {condition: service_completed_successfully}
     ports: ["8000:8000"]
     networks: [platform]
     healthcheck:

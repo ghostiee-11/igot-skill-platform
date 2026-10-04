@@ -495,7 +495,7 @@ def apply_assessment_bank(db: Session) -> int:
     Idempotent: an assessment is rebuilt only when its question texts differ from the bank.
     Time limits are recomputed for every assessment from its question count.
     """
-    bank = json.loads(ASSESSMENT_BANK_PATH.read_text()) if ASSESSMENT_BANK_PATH.exists() else {}
+    bank = json.loads(ASSESSMENT_BANK_PATH.read_text(encoding="utf-8")) if ASSESSMENT_BANK_PATH.exists() else {}
     rebuilt = 0
     courses = db.query(Course).options(selectinload(Course.assessment).selectinload(Assessment.questions)).all()
     for course in courses:

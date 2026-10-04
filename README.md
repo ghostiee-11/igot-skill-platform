@@ -2,19 +2,31 @@
 
 Civil-service learning, assessment and competency intelligence, organized as independently deployable domain services.
 
-This branch is rebuilding the service architecture. The existing frontend has been relocated intact; its redesign is a separate project. See the [migration status](docs/migration/status.md) for what has actually been verified.
+The local runtime is the service stack in `infra/compose/docker-compose.yml`: Next.js frontend, public gateway, seven domain services, PostgreSQL, RabbitMQ and background workers. LMS work was developed on `rebuild/lms`. See [current verification](docs/local-runtime-2026-10-04.md) for executed checks and [known issues](docs/known-issues.md) for remaining limitations.
+
+## Run locally
+
+With Docker Desktop running Linux containers, start from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1
+```
+
+The helper creates `.env` only if absent, validates Compose, builds one image at a time, runs migrations and local bootstrap, and waits for startup. It stops existing services during builds and preserves their volumes. Open [the frontend](http://localhost:3000). Subsequent starts can use `scripts/start-local.ps1 -SkipBuild`.
+
+Use [LOCAL_SETUP.md](LOCAL_SETUP.md) for platform-independent Compose commands, provider configuration, testing and stop/recovery operations. The [Docker runtime guide](docs/operations/docker-local.md) explains images, workers, storage and expected container states. Local health does not imply that live providers or every specialist feature are enabled.
 
 ## Repository
 
 | Directory | Purpose |
 |---|---|
-| `apps/frontend/` | Existing Next.js application, preserved during backend migration |
+| `apps/frontend/` | Next.js learner/admin application and standalone frontend Docker image |
 | `apps/gateway/` | Public API entry point and compatibility with existing frontend routes |
 | `services/` | Identity, learning, assessment, competency, AI, content and lab control |
 | `contracts/` | Versioned service HTTP/event contracts and integration fixtures |
 | `packages/` | Small shared infrastructure packages and generated API client |
 | `environments/labs/` | Disposable workspace/target images and exercise manifests |
-| `infra/` | Local orchestration, PostgreSQL role/schema bootstrap and messaging |
+| `infra/` | Compose, PostgreSQL role/schema bootstrap, explicit local fixtures and artifact storage |
 | `migrations/legacy/` | Explicit source-to-service migration and reconciliation tooling |
 | `docs/` | Architecture, ownership, decisions, runbooks and migration evidence |
 
@@ -41,4 +53,4 @@ The old `backend/`, `content-pipeline/` and `supabase/` remain migration referen
 
 ## Branch workflow
 
-The `final-final` baseline was merged into `main` at `7123bd3`. Changes in this rebuild stay on `rebuild/service-architecture` until user review. Data cutover and the rebuild merge are separate actions; neither happens as a side effect of local setup.
+The pre-LMS `main` baseline is commit `0d0f6d2` (the earlier service-architecture PR merge). `rebuild/lms` adds LMS changes and documented local-runtime repairs on top of that baseline. [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2) is the authoritative integration/check/merge record; [HANDOFF.md](docs/HANDOFF.md) contains continuity and verification details. Code merging does not import legacy learner data, reset Docker volumes or authorize production cutover.

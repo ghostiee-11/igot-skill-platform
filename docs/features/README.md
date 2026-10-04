@@ -10,7 +10,7 @@ Each document provides deep technical context designed for **human developers** 
 
 ## Feature Catalog
 
-| Feature Specification | Status | Primary Modules / Routes | Key Models / Entities |
+| Feature Specification | Historical specification status | Original Modules / Routes | Original Models / Entities |
 |---|---|---|---|
 | [AI Copilot](ai-copilot.md) | **Implemented** (Phase 0) | `backend/app/agents/`, `/api/agents/chat`, `AiAssistantWidget.tsx` | LangGraph StateGraph, Gemini / OpenAI / MoSPI Fallback Engine |
 | [Course Management](course-management.md) | **Implemented** (Phase 0) | `/discover`, `/courses/[id]`, `/learn/[courseId]` | `Course`, `Module`, `Lesson`, `Enrollment`, `Progress` |

@@ -1,5 +1,7 @@
 # Content service
 
+Compose also starts `content-worker` from the API image with `celery -A igot_content.tasks:celery worker --loglevel=INFO --concurrency=1`. It consumes RabbitMQ source-processing jobs and shares the ignored artifact storage mount. Celery control/event subscription queues are exclusive for RabbitMQ 4 compatibility. Accepted/queued status alone is not completion; inspect the owned job result/error and worker logs. See [Docker operations](../../docs/operations/docker-local.md).
+
 Owns: Source records, extraction, ingestion jobs, resource catalogue and publication workflow.
 
 Source material and published curriculum have different owners. Extraction produces artifacts; acceptance/publication is explicit. Uploads and recordings stay out of Git.

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, Suspense } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   CheckCircle2,
   Circle,
@@ -16,6 +17,14 @@ import {
   Sparkles,
   HelpCircle,
   BookOpen,
+  Brain,
+  ShieldAlert,
+  Scale,
+  ArrowRight,
+  Terminal,
+  BarChart3,
+  Mic,
+  FileCheck2,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +34,6 @@ import { fetchApi } from "@/lib/api";
 import { CurrentLesson, ModuleSummary } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import confetti from "canvas-confetti";
-import { LabLauncherBanner } from "@/features/labs/components/LabLauncherBanner";
 import { LessonVideo } from "@/features/learning/components/LessonVideo";
 import { LessonMarkdown } from "@/features/learning/components/LessonMarkdown";
 
@@ -139,22 +147,41 @@ function LearningPlayerContent() {
 
   if (loading && !currentLesson) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-[#1E3A8A] animate-spin" />
+      <div className="min-h-[80vh] flex items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-9 w-9 rounded-full border-[3px] border-slate-200 border-t-[#1E3A8A] animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Loading course player...</p>
+        </div>
       </div>
     );
   }
 
   if (!currentLesson) {
     return (
-      <div className="p-12 text-center">
-        <p className="text-sm text-slate-500">Lesson content unavailable.</p>
+      <div className="p-12 text-center bg-[#F8FAFC] min-h-[60vh] flex flex-col items-center justify-center">
+        <BookOpen className="h-10 w-10 text-slate-400 mb-3" />
+        <h3 className="text-base font-bold text-slate-800">Lesson content unavailable</h3>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+          This course unit is being calibrated. Return to the course syllabus to continue.
+        </p>
+        <Link href={`/courses/${courseId}`} className="mt-4">
+          <Button size="sm" variant="outline" className="text-xs rounded-xl">
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Back to Course
+          </Button>
+        </Link>
       </div>
     );
   }
 
+  const courseIdNum = Number(courseId);
+  const courseTitleLower = (courseMeta?.title || "").toLowerCase();
+  const isBehaviouralCourse = courseIdNum === 1 || courseTitleLower.includes("conduct") || courseTitleLower.includes("ethics") || courseTitleLower.includes("behavioural");
+  const isStatisticalCourse = courseIdNum === 2 || courseTitleLower.includes("price") || courseTitleLower.includes("cpi") || courseTitleLower.includes("statistical");
+  const isTechnicalCourse = courseIdNum === 3 || courseTitleLower.includes("python") || courseTitleLower.includes("data cleaning") || courseTitleLower.includes("technical") || currentLesson.content_type === "lab";
+  const isDigitalGovCourse = courseIdNum === 4 || courseTitleLower.includes("digital governance") || courseTitleLower.includes("cyber");
+
   return (
-    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-65px)] bg-slate-50">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-65px)] bg-[#F8FAFC]">
       {/* Mobile Syllabus Toggle Bar */}
       <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
@@ -174,22 +201,27 @@ function LearningPlayerContent() {
 
       {/* Collapsible Left Course Syllabus Sidebar */}
       <aside className={`${mobileSyllabusOpen ? "flex" : "hidden"} lg:flex w-full lg:w-80 border-r border-slate-200 bg-white flex-col shrink-0 transition-all duration-300`}>
-        <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-          <a
+        <div className="p-4 border-b border-slate-200 bg-slate-50/70">
+          <Link
             href={`/courses/${courseId}`}
-            className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1 mb-2"
+            className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1 mb-2.5 transition-colors"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> Back to Course Overview
-          </a>
+          </Link>
           <h2 className="text-sm font-bold text-slate-900 line-clamp-2">
             {courseMeta?.title}
           </h2>
-          <div className="mt-3 space-y-1">
-            <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+          <div className="mt-3 space-y-1.5">
+            <div className="flex justify-between text-[11px] font-bold text-slate-600">
               <span>Overall Progress</span>
-              <span>{courseMeta?.progress_percent}%</span>
+              <span className="text-[#1E3A8A]">{courseMeta?.progress_percent || 0}%</span>
             </div>
-            <Progress value={courseMeta?.progress_percent} indicatorClassName="navy-teal-gradient" />
+            <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full navy-teal-gradient transition-all duration-500"
+                style={{ width: `${courseMeta?.progress_percent || 0}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -213,15 +245,15 @@ function LearningPlayerContent() {
                     <button
                       key={l.id}
                       onClick={() => handleSelectLesson(l.id)}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
                         isCurrent
-                          ? "bg-[#1E3A8A] text-white font-semibold shadow-xs"
+                          ? "bg-[#1E3A8A] text-white font-bold shadow-sm"
                           : l.completed
-                          ? "text-slate-700 hover:bg-slate-100 bg-slate-50/80"
-                          : "text-slate-600 hover:bg-slate-100"
+                          ? "text-slate-700 hover:bg-slate-100 bg-slate-50/80 font-medium"
+                          : "text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2.5 truncate">
                         {l.completed ? (
                           <CheckCircle2
                             className={`h-4 w-4 shrink-0 ${
@@ -231,7 +263,7 @@ function LearningPlayerContent() {
                         ) : (
                           <Circle
                             className={`h-4 w-4 shrink-0 ${
-                              isCurrent ? "text-slate-400" : "text-slate-300"
+                              isCurrent ? "text-white/60" : "text-slate-300"
                             }`}
                           />
                         )}
@@ -239,7 +271,7 @@ function LearningPlayerContent() {
                       </div>
                       <span
                         className={`text-[10px] ml-2 ${
-                          isCurrent ? "text-slate-300" : "text-slate-400"
+                          isCurrent ? "text-white/80" : "text-slate-400"
                         }`}
                       >
                         {l.duration_minutes}m
@@ -254,16 +286,16 @@ function LearningPlayerContent() {
           {/* Final Assessment Shortcut Link */}
           {courseMeta?.assessment_id && (
             <div className="pt-4 border-t border-slate-100">
-              <a
+              <Link
                 href={`/assess/${courseMeta.assessment_id}`}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-[#1E3A8A] hover:bg-blue-100/70 text-xs font-bold transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-[#1E3A8A] hover:bg-blue-100/70 text-xs font-bold transition-colors shadow-2xs"
               >
                 <span className="flex items-center gap-2">
                   <Award className="h-4 w-4 text-[#1E3A8A]" />
-                  Official Assessment
+                  Official Certification Exam
                 </span>
                 <ChevronRight className="h-4 w-4 text-[#1E3A8A]" />
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -276,22 +308,22 @@ function LearningPlayerContent() {
         className={`flex-1 flex flex-col overflow-y-auto transition-opacity ${loading ? "opacity-50 pointer-events-none" : ""}`}
       >
         {/* Lesson Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="px-4 sm:px-8 py-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div>
-            <span className="text-xs font-semibold text-[#0D9488] uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#0D9488] uppercase tracking-wider">
               {currentLesson.module_title}
             </span>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-0.5">
               {currentLesson.title}
             </h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs capitalize">
+            <Badge variant="secondary" className="text-xs capitalize font-semibold">
               {currentLesson.content_type} {"\u2022"} {currentLesson.duration_minutes} min
             </Badge>
             {currentLesson.completed && (
-              <Badge variant="success" className="text-xs inline-flex items-center gap-1">
+              <Badge variant="success" className="text-xs inline-flex items-center gap-1 font-bold">
                 <CheckCircle2 className="h-3 w-3" /> Completed
               </Badge>
             )}
@@ -300,41 +332,102 @@ function LearningPlayerContent() {
 
         {/* Lesson Body Content */}
         <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
-          {/* Simulated Video Player if Content Type is Video */}
-          {(currentLesson.content_type === "video" || currentLesson.video_url) && (
-            <LessonVideo title={currentLesson.title} videoUrl={currentLesson.video_url} />
-          )}
+          {/* ════════════════════════════════════════════════════════════════
+              PRIMARY: ACTUAL SCRAPED VIDEO PLAYER / SEGMENT
+              ════════════════════════════════════════════════════════════════ */}
+          <div className="space-y-6">
+            {/* Video Player or Verified Fallback */}
+            <LessonVideo
+              title={currentLesson.title}
+              videoMapping={currentLesson.video_mapping}
+              videoUrl={currentLesson.video_url}
+              startTime={currentLesson.video_start_time}
+              endTime={currentLesson.video_end_time}
+              sourceVideoTitle={currentLesson.source_video_title}
+              topic={currentLesson.topic}
+              learningObjective={currentLesson.learning_objective}
+              durationMinutes={currentLesson.duration_minutes}
+              isCompleted={currentLesson.completed}
+              onComplete={() => {
+                confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+              }}
+            />
 
-          {/* Interactive Lab Launcher Banner if Content Type is Lab */}
-          {currentLesson.content_type === "lab" && (
-            <LabLauncherBanner title={currentLesson.title} />
-          )}
+            {/* Lesson Objectives & Syllabus Brief */}
+            <Card className="border-slate-200/90 bg-white shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-[#1E3A8A]" />
+                    <CardTitle className="text-sm font-bold text-slate-900">
+                      Lesson Objectives & Syllabus Alignment
+                    </CardTitle>
+                  </div>
+                  {currentLesson.topic && (
+                    <Badge variant="outline" className="text-[11px] font-semibold text-teal-700 bg-teal-50 border-teal-200">
+                      {currentLesson.topic}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 space-y-3.5 text-xs leading-relaxed text-slate-700">
+                {currentLesson.learning_objective ? (
+                  <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100/90 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-[#1E3A8A] text-xs">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Key Learning Objective:
+                    </div>
+                    <p className="text-slate-800 font-medium pl-5 text-[12px]">
+                      {currentLesson.learning_objective}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-slate-600">
+                    This unit provides official capacity-building training from the {courseMeta?.organization || "Ministry"} covering core operational standards, statutory guidelines, and practical execution frameworks.
+                  </p>
+                )}
 
-          {/* Reading / Lab Content Area */}
-          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs">
-            <LessonMarkdown content={currentLesson.content} title={currentLesson.title} />
+                {/* Collapsible Supplementary Reading & Notes */}
+                {currentLesson.content && (
+                  <details className="mt-4 pt-3 border-t border-slate-100 group cursor-pointer">
+                    <summary className="text-xs font-bold text-[#1E3A8A] group-open:text-slate-900 flex items-center justify-between py-1 transition-colors select-none">
+                      <span className="flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-[#0D9488]" />
+                        View Structured Reading Notes & Code Reference
+                      </span>
+                      <span className="text-[11px] font-normal text-slate-400 group-open:hidden">
+                        Click to expand
+                      </span>
+                    </summary>
+                    <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <LessonMarkdown content={currentLesson.content} title={currentLesson.title} />
+                    </div>
+                  </details>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* IN-LESSON PRACTICE ACTIVITY */}
+          {/* IN-LESSON PRACTICE / CONCEPT CHECK ACTIVITY */}
           {currentLesson.activity && currentLesson.activity.has_activity && (
-            <Card className="border-blue-200 bg-blue-50/30 shadow-xs">
-              <CardHeader className="pb-3 border-b border-blue-100">
+            <Card className="border-blue-200 bg-blue-50/40 shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="pb-3 border-b border-blue-100 bg-white/60">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#1E3A8A]" />
                   <CardTitle className="text-sm font-bold text-slate-900">
-                    {t("learn.practice")}
+                    {t("learn.practice") || "In-Lesson Concept Check"}
                   </CardTitle>
                 </div>
                 <p className="text-xs text-slate-600">
-                  Check your conceptual understanding before continuing to the next unit.
+                  Verify your conceptual understanding before continuing to the hands-on activity.
                 </p>
               </CardHeader>
-              <CardContent className="p-5 space-y-4">
-                <p className="text-sm font-semibold text-slate-900">
+              <CardContent className="p-5 sm:p-6 space-y-4">
+                <p className="text-sm font-bold text-slate-900">
                   {currentLesson.activity.question}
                 </p>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {currentLesson.activity.options.map((opt, idx) => {
                     const isSelected = selectedActivityOption === idx;
                     return (
@@ -345,14 +438,14 @@ function LearningPlayerContent() {
                           setSelectedActivityOption(idx);
                           setActivityFeedback(null);
                         }}
-                        className={`w-full p-3 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer flex items-center gap-3 ${
+                        className={`w-full p-3.5 rounded-xl border text-left text-xs font-semibold transition-all cursor-pointer flex items-center gap-3 ${
                           isSelected
-                            ? "bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-xs"
-                            : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                            ? "bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-sm"
+                            : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                         }`}
                       >
                         <span
-                          className={`h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                          className={`h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
                             isSelected
                               ? "bg-teal-500 text-white"
                               : "bg-slate-100 text-slate-600"
@@ -369,10 +462,10 @@ function LearningPlayerContent() {
                 {/* Validation Feedback */}
                 {activityFeedback && (
                   <div
-                    className={`p-3 rounded-xl text-xs flex items-start gap-2.5 ${
+                    className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
                       activityFeedback.is_correct
-                        ? "bg-emerald-100/70 border border-emerald-300 text-emerald-950"
-                        : "bg-rose-100/70 border border-rose-300 text-rose-950"
+                        ? "bg-emerald-100/80 border border-emerald-300 text-emerald-950"
+                        : "bg-rose-100/80 border border-rose-300 text-rose-950"
                     }`}
                   >
                     {activityFeedback.is_correct ? (
@@ -396,10 +489,214 @@ function LearningPlayerContent() {
                     size="sm"
                     onClick={handleValidateActivity}
                     disabled={selectedActivityOption === null || activityChecking}
-                    className="navy-teal-gradient hover:opacity-95 text-white text-xs font-semibold rounded-xl"
+                    className="navy-teal-gradient hover:opacity-95 text-white text-xs font-bold rounded-xl h-9 px-5 shadow-sm"
                   >
-                    {activityChecking ? "Checking..." : t("learn.checkAnswer")}
+                    {activityChecking ? "Checking..." : t("learn.checkAnswer") || "Check Answer"}
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════
+              DOMAIN-SPECIFIC IN-FLOW ACTIVITY LAUNCHER
+              ════════════════════════════════════════════════════════════════ */}
+          {/* 1. TECHNICAL: Hands-on Python Lab */}
+          {isTechnicalCourse && (
+            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-white shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-emerald-600">
+              <CardHeader className="pb-3 border-b border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4 text-emerald-700" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      Executable Python Lab & Sandbox
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Pytest Autograder
+                  </span>
+                </div>
+                <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                  {currentLesson.content_type === "lab"
+                    ? currentLesson.title
+                    : "Interactive Python Coding Lab: Data Wrangling on Microdata"}
+                </CardTitle>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Write, execute, and debug Python routines in an isolated 3.11 sandbox environment with real-time test assertions and code feedback.
+                </p>
+              </CardHeader>
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1 text-xs text-slate-600">
+                  <div className="flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Run vectorized calculations in live Python kernel</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Instant grading against automated test suites</span>
+                  </div>
+                </div>
+                {(() => {
+                  const topicLower = (currentLesson.topic || "").toLowerCase();
+                  let labTarget = "python-pandas-transform-001";
+                  if (topicLower.includes("pydantic") || topicLower.includes("validation")) {
+                    labTarget = "python-debugging-pfms-001";
+                  } else if (topicLower.includes("viz") || topicLower.includes("chart")) {
+                    labTarget = "python-data-viz-001";
+                  }
+                  return (
+                    <a href={`/labs/${labTarget}?courseId=${courseId}`}>
+                      <Button
+                        size="sm"
+                        className="h-10 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        <Terminal className="h-3.5 w-3.5" />
+                        Launch Lab Workspace <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </a>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 2. STATISTICAL: Adaptive Exam & Formula Interpretation */}
+          {isStatisticalCourse && (
+            <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-white shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-indigo-600">
+              <CardHeader className="pb-3 border-b border-indigo-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-indigo-700" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-800">
+                      Statistical Mastery Activity
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full border border-indigo-200">
+                    Adaptive Engine
+                  </span>
+                </div>
+                <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                  Statistical Data Interpretation & CPI Assessment
+                </CardTitle>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Calculate elementary price relatives, evaluate modified Laspeyres weightings, and interpret official MoSPI chart visualisations.
+                </p>
+              </CardHeader>
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1 text-xs text-slate-600">
+                  <div className="flex items-center gap-2 font-medium">
+                    <BarChart3 className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>Real-time dynamic price index calculation</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-indigo-600" />
+                    <span>Instant skill mastery calibration</span>
+                  </div>
+                </div>
+                <a href={`/statistical/exam?courseId=${courseId}`}>
+                  <Button
+                    size="sm"
+                    className="h-10 px-5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Brain className="h-3.5 w-3.5" />
+                    Start Statistical Assessment <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 3. DIGITAL GOVERNANCE: DFIR Sandbox & Tabletop Crisis Scenario */}
+          {isDigitalGovCourse && (
+            <Card className="border-sky-200 bg-gradient-to-br from-sky-50/60 via-white to-white shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-[#1E3A8A]">
+              <CardHeader className="pb-3 border-b border-sky-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-[#1E3A8A]" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A]">
+                      Cyber Defense & Crisis Scenario Activity
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-sky-100 text-[#1E3A8A] px-2 py-0.5 rounded-full border border-sky-200">
+                    CERT-In Workbench
+                  </span>
+                </div>
+                <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                  National Cyber Defense Workbench & Incident Injects
+                </CardTitle>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Investigate telemetry logs, triage unauthorized intrusion attempts, and practice 6-hour statutory CERT-In breach reporting.
+                </p>
+              </CardHeader>
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <a href={`/digital-governance/sandbox?courseId=${courseId}`}>
+                    <Button
+                      size="sm"
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl bg-[#1E3A8A] hover:bg-[#172554] text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Terminal className="h-3.5 w-3.5" />
+                      Open DFIR Cyber Sandbox
+                    </Button>
+                  </a>
+                  <a href={`/digital-governance/scenarios?courseId=${courseId}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Scale className="h-3.5 w-3.5 text-amber-600" />
+                      Tabletop Crisis Simulation
+                    </Button>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 4. BEHAVIOURAL: Conduct Case Study & AI Oral Board */}
+          {isBehaviouralCourse && (
+            <Card className="border-teal-200 bg-gradient-to-br from-teal-50/60 via-white to-white shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-[#0D9488]">
+              <CardHeader className="pb-3 border-b border-teal-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-[#0D9488]" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#0D9488]">
+                      Administrative Ethics & Oral Defense Activity
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200">
+                    Live Board
+                  </span>
+                </div>
+                <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                  Administrative Conduct Inquiries & Oral Defense Board
+                </CardTitle>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Resolve branching Rule 14 disciplinary dilemmas or take part in an interactive AI civil service oral examination.
+                </p>
+              </CardHeader>
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <a href={`/behavioural/cases?courseId=${courseId}`}>
+                    <Button
+                      size="sm"
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl bg-[#0D9488] hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <FileCheck2 className="h-3.5 w-3.5" />
+                      Launch Case Scenario Inquiry
+                    </Button>
+                  </a>
+                  <a href={`/behavioural/interview?courseId=${courseId}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl border-teal-300 bg-teal-50/50 text-[#0D9488] hover:bg-teal-100/50 font-bold text-xs shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Mic className="h-3.5 w-3.5 text-[#0D9488]" />
+                      AI Oral Defense Board
+                    </Button>
+                  </a>
                 </div>
               </CardContent>
             </Card>
@@ -423,19 +720,19 @@ function LearningPlayerContent() {
                   handleSelectLesson(currentLesson.prev_lesson_id);
                 }
               }}
-              className="text-xs rounded-xl"
+              className="text-xs rounded-xl h-10 px-4 font-semibold border-slate-300 cursor-pointer"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> {t("learn.previous")}
+              <ChevronLeft className="h-4 w-4 mr-1" /> {t("learn.previous") || "Previous Unit"}
             </Button>
 
             <Button
               size="sm"
               onClick={handleCompleteAndNext}
-              className="navy-teal-gradient hover:opacity-95 text-white text-xs font-semibold px-5 cursor-pointer rounded-xl"
+              className="navy-teal-gradient hover:opacity-95 text-white text-xs font-bold px-6 h-10 cursor-pointer rounded-xl shadow-sm"
             >
               {currentLesson.is_last_lesson
-                ? t("learn.takeAssessment")
-                : t("learn.markCompleted")}
+                ? t("learn.takeAssessment") || "Take Official Assessment"
+                : t("learn.markCompleted") || "Mark Complete & Continue"}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -449,7 +746,7 @@ export default function CourseLearningPlayerPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="min-h-[80vh] flex items-center justify-center bg-[#F8FAFC]">
           <div className="h-8 w-8 rounded-full border-4 border-slate-200 border-t-[#1E3A8A] animate-spin" />
         </div>
       }

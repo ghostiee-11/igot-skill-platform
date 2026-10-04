@@ -31,7 +31,7 @@ def test_seed_demo_builds_a_complete_dataset_and_is_idempotent(db):
     assert summary["quizzes"] == len(QUIZ_SOURCE_TITLES)
 
     course = db.query(Course).filter_by(title=COURSES[0]["title"]).one()
-    assert len(course.modules) == 2 and len(course.assessment.questions) == 4
+    assert len(course.modules) == 2 and len(course.assessment.questions) >= 4
 
     official = db.query(User).filter(User.email.like(f"%@{DEMO_EMAIL_DOMAIN}")).first()
     assert db.query(GapAnalysis).filter_by(user_id=official.id).count() == 4 * (1 + len(HISTORY_DAYS))

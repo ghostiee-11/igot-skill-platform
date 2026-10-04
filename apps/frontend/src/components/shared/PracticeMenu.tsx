@@ -6,8 +6,8 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { ChevronDown } from "lucide-react";
 import { useHoverDropdown } from "@/components/shared/useHoverDropdown";
 
-// Top-level nav entries; every other authenticated entry lives in the Practice menu so the bar fits.
-export const PRIMARY_NAV_HREFS = ["/home", "/competency", "/courses", "/quiz"];
+// Top-level LMS nav entries; domain-specific labs and interactive modules live in the Practice dropdown.
+export const PRIMARY_NAV_HREFS = ["/home", "/courses", "/my-learning", "/progress"];
 
 interface NavItem {
   href: string;

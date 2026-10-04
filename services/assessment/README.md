@@ -24,3 +24,7 @@ python -m pytest tests
 Use the service's `.env.example` to set process environment explicitly. Do not inherit the old root `.env` automatically. A database-backed endpoint requires explicit migration first; health alone is not proof the schema is ready.
 
 See [local setup](../../LOCAL_SETUP.md) for workspace orchestration and [architecture](../../docs/architecture/service-architecture.md) for contracts. Implementation status is recorded honestly in the migration status page rather than inferred from this service's presence.
+
+## Local event delivery
+
+Compose runs `python -m igot_assessment.dispatch_events` as `assessment-events` from the same image. It reads assessment-owned pending outbox records, sends course outcomes to learning and evidence to competency through authenticated idempotent HTTP APIs, and records `published_at` only after delivery succeeds. Failures remain pending and are retried. This local transport is HTTP; RabbitMQ assessment event publishers/consumers are still planned.

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ShieldAlert,
   Lock,
@@ -98,6 +99,8 @@ const DOMAIN_ICONS: Record<string, any> = {
 };
 
 export default function CyberScenariosPage() {
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId") || "4";
   const [scenarios, setScenarios] = useState<ScenarioListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -253,7 +256,17 @@ export default function CyberScenariosPage() {
               </div>
             </div>
 
-            <div className="mt-8 flex justify-center gap-3">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {courseId && (
+                <Link href={`/courses/${courseId}`}>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-5 shadow-xs rounded-xl"
+                  >
+                    <BookOpen className="h-3.5 w-3.5 mr-1 text-white" /> Return to Course
+                  </Button>
+                </Link>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -532,11 +545,13 @@ export default function CyberScenariosPage() {
                 CCA PKI rules, and MeghRaj Cloud sovereignty frameworks.
               </p>
             </div>
-            <Link href="/courses">
-              <Button size="sm" className="glass-light hover:bg-white/20 border border-white/20 text-white font-semibold text-xs shrink-0 rounded-xl">
-                <BookOpen className="h-3.5 w-3.5 mr-1 text-teal-300" /> View Official Curriculum
-              </Button>
-            </Link>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Link href={`/courses/${courseId}`}>
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs shrink-0 rounded-xl shadow-xs">
+                  <BookOpen className="h-3.5 w-3.5 mr-1 text-white" /> Return to Course Player
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>

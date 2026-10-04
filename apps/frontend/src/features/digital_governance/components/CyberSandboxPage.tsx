@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ShieldAlert,
   Terminal,
@@ -26,6 +27,7 @@ import {
   Radio,
   Server,
   Send,
+  BookOpen,
 } from "lucide-react";
 import {
   Card,
@@ -90,6 +92,8 @@ interface CompetencyRadar {
 }
 
 export default function CyberSandboxPage() {
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId") || "4";
   const [challenges, setChallenges] = useState<ChallengeSummary[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeSession, setActiveSession] = useState<ActiveSessionData | null>(
@@ -458,8 +462,17 @@ export default function CyberSandboxPage() {
 
             {/* Quick Actions & Score Overview */}
             <div className="flex flex-col sm:flex-row gap-3">
+              {courseId && (
+                <Link
+                  href={`/courses/${courseId}`}
+                  className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-xs shadow-md"
+                >
+                  <BookOpen className="h-4 w-4 text-white" />
+                  Return to Course Player
+                </Link>
+              )}
               <Link
-                href="/digital-governance/scenarios"
+                href={`/digital-governance/scenarios${courseId ? `?courseId=${courseId}` : ""}`}
                 className="flex items-center justify-center gap-2 glass-light hover:bg-white/20 border border-white/20 text-white font-bold px-5 py-2.5 rounded-xl transition-all text-xs"
               >
                 <Layers className="h-4 w-4 text-teal-300" />

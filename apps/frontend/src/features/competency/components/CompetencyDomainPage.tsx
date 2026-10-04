@@ -174,22 +174,45 @@ export default function CompetencyDomainPage() {
                   <Skeleton className="h-9 w-full" />
                 </li>
               ))}
-            {competencies.map((c) => (
-              <li key={c.code} className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_12rem_2.5rem] sm:items-center sm:gap-5">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-slate-900">{c.name}</p>
-                    {target !== null && <GapChip gap={target - c.level} />}
+            {competencies.map((c) => {
+              const status = c.status || (target !== null && c.level >= target ? "Strong" : (c.level >= (target ?? 3.0) - 1.0 ? "Developing" : "Gap"));
+              const statusColor = status === "Strong" ? "bg-emerald-50 text-emerald-800 border-emerald-200" : status === "Developing" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-rose-50 text-rose-800 border-rose-200";
+              const mastery = c.mastery_percent ?? Math.round((c.level / LEVEL_MAX) * 100);
+
+              return (
+                <li key={c.code} className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_12rem_3.5rem] sm:items-center sm:gap-5">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-slate-900">{c.name}</p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                        {status}
+                      </span>
+                      {target !== null && <GapChip gap={target - c.level} />}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-x-2">
+                      <span className="font-semibold text-slate-700">{mastery}% Mastery</span>
+                      <span>·</span>
+                      <span>{levelLabel(c.level)}</span>
+                      {c.recent_evidence && c.recent_evidence.length > 0 ? (
+                        <>
+                          <span>·</span>
+                          <span className="text-teal-700 font-medium">
+                            Last: {c.recent_evidence[0].title} ({c.recent_evidence[0].score_pct}%)
+                          </span>
+                        </>
+                      ) : (
+                        c.evidence_source ? <span>· {EVIDENCE_LABELS[c.evidence_source] ?? c.evidence_source}</span> : null
+                      )}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {levelLabel(c.level)}
-                    {c.evidence_source ? ` · ${EVIDENCE_LABELS[c.evidence_source] ?? c.evidence_source}` : ""}
-                  </p>
-                </div>
-                <LevelBar level={c.level} target={target} label={c.name} />
-                <p className="text-sm font-semibold tabular-nums text-slate-900 sm:text-right">{c.level.toFixed(1)}</p>
-              </li>
-            ))}
+                  <LevelBar level={c.level} target={target} label={c.name} />
+                  <div className="sm:text-right">
+                    <p className="text-sm font-bold tabular-nums text-slate-900">{c.level.toFixed(1)}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">/ {LEVEL_MAX}.0</p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </section>
 

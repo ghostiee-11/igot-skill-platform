@@ -1,17 +1,29 @@
 import json
 import datetime
+import re
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.core.security import get_current_active_user
 from app.models.models import (
-    User, Course, Module, Lesson, Enrollment, Progress
+    User, Course, Module, Lesson, Enrollment, Progress, LearningHistory
 )
 from .schemas import ActivityAnswerRequest
 
 
 router = APIRouter(prefix="/learning", tags=["learning"])
+
+
+def extract_youtube_id(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    url = url.strip()
+    if len(url) == 11 and re.match(r"^[A-Za-z0-9_-]{11}$", url):
+        return url
+    match = re.search(r"(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([A-Za-z0-9_-]{11})", url)
+    return match.group(1) if match else None
+
 
 @router.get("/course/{course_id}/player")
 def get_course_player(
@@ -64,14 +76,22 @@ def get_course_player(
         m_lessons = []
         for l in m.lessons:
             is_completed = l.id in completed_lesson_ids
+            l_start = getattr(l, "video_start_time", 0) or 0
+            l_end = getattr(l, "video_end_time", None)
+            l_dur = max(1, round((l_end - l_start) / 60)) if (l_end and l_end > l_start) else (l.duration_minutes or 15)
             lesson_meta = {
                 "id": l.id,
                 "module_id": m.id,
                 "title": l.title,
                 "content_type": l.content_type,
-                "duration_minutes": l.duration_minutes,
+                "duration_minutes": l_dur,
                 "completed": is_completed,
-                "order": l.order
+                "order": l.order,
+                "topic": getattr(l, "topic", None),
+                "source_video_title": getattr(l, "source_video_title", None),
+                "video_url": l.video_url,
+                "video_start_time": l_start,
+                "video_end_time": l_end
             }
             m_lessons.append(lesson_meta)
             all_lessons.append(lesson_meta)
@@ -126,6 +146,27 @@ def get_course_player(
     total_lessons_count = len(all_lessons)
     overall_progress_pct = round((len(completed_lesson_ids) / max(total_lessons_count, 1)) * 100, 1)
 
+    start_time = getattr(target_lesson, "video_start_time", 0) or 0
+    end_time = getattr(target_lesson, "video_end_time", None)
+    if end_time and end_time > start_time:
+        computed_duration = max(1, round((end_time - start_time) / 60))
+    else:
+        computed_duration = target_lesson.duration_minutes or 15
+
+    source_video_id = extract_youtube_id(target_lesson.video_url)
+
+    video_mapping = {
+        "lesson_id": target_lesson.id,
+        "source_video_id": source_video_id,
+        "source_url": target_lesson.video_url,
+        "source_video_title": getattr(target_lesson, "source_video_title", None),
+        "start_time": start_time,
+        "end_time": end_time,
+        "topic": getattr(target_lesson, "topic", None),
+        "learning_objective": getattr(target_lesson, "learning_objective", None),
+        "duration_minutes": computed_duration
+    } if target_lesson.video_url else None
+
     response = {
         "course": {
             "id": course.id,
@@ -140,10 +181,18 @@ def get_course_player(
             "module_id": target_lesson.module_id,
             "module_title": target_lesson.module.title if target_lesson.module else "",
             "title": target_lesson.title,
+            "topic": getattr(target_lesson, "topic", None),
+            "learning_objective": getattr(target_lesson, "learning_objective", None),
             "content_type": target_lesson.content_type,
-            "duration_minutes": target_lesson.duration_minutes,
+            "duration_minutes": computed_duration,
             "content": target_lesson.content,
+            "video_mapping": video_mapping,
+            "source_video_id": source_video_id,
+            "source_url": target_lesson.video_url,
             "video_url": target_lesson.video_url,
+            "video_start_time": start_time,
+            "video_end_time": end_time,
+            "source_video_title": getattr(target_lesson, "source_video_title", None),
             "completed": target_lesson.id in completed_lesson_ids,
             "activity": {
                 "question": target_lesson.activity_question,
@@ -156,6 +205,20 @@ def get_course_player(
             "is_last_lesson": next_lesson_id is None
         }
     }
+    # Record viewed in learning history & update active date
+    lh = db.query(LearningHistory).filter(
+        LearningHistory.user_id == current_user.id,
+        LearningHistory.course_id == course.id
+    ).first()
+    if not lh:
+        lh = LearningHistory(user_id=current_user.id, course_id=course.id, viewed_at=datetime.datetime.utcnow())
+        db.add(lh)
+    else:
+        lh.viewed_at = datetime.datetime.utcnow()
+
+    if current_user.profile:
+        current_user.profile.last_active_date = datetime.datetime.utcnow()
+
     db.commit()
     return response
 
@@ -190,7 +253,8 @@ def mark_lesson_complete(
             enrollment_id=enrollment.id,
             module_id=lesson.module_id,
             lesson_id=lesson.id,
-            completed=True
+            completed=True,
+            updated_at=datetime.datetime.utcnow()
         )
         db.add(progress)
     else:
@@ -202,22 +266,59 @@ def mark_lesson_complete(
         db.query(Lesson)
         .join(Module, Lesson.module_id == Module.id)
         .filter(Module.course_id == course_id)
-        .count()
+        .order_by(Module.order.asc(), Lesson.order.asc())
+        .all()
     )
-    all_completed = (
-        db.query(Progress)
-        .filter(Progress.enrollment_id == enrollment.id, Progress.completed == True)
-        .count()
-    )
+    all_completed_ids = {
+        p.lesson_id for p in db.query(Progress).filter(Progress.enrollment_id == enrollment.id, Progress.completed == True).all()
+    }
+    all_completed_ids.add(lesson.id)
 
-    pct = min(100.0, round((all_completed / max(all_course_lessons, 1)) * 100, 1))
+    pct = min(100.0, round((len(all_completed_ids) / max(len(all_course_lessons), 1)) * 100, 1))
     enrollment.progress_percent = pct
+
+    # Find the next incomplete lesson
+    next_incomplete_lesson = next((l for l in all_course_lessons if l.id not in all_completed_ids), None)
+    if next_incomplete_lesson:
+        enrollment.last_lesson_id = next_incomplete_lesson.id
+    else:
+        enrollment.last_lesson_id = lesson.id
+
+    if pct >= 100.0:
+        enrollment.status = "completed"
+        enrollment.completed_at = datetime.datetime.utcnow()
+    else:
+        enrollment.status = "in_progress"
+
+    # Record in LearningHistory
+    lh = db.query(LearningHistory).filter(
+        LearningHistory.user_id == current_user.id,
+        LearningHistory.course_id == course_id
+    ).first()
+    if not lh:
+        lh = LearningHistory(user_id=current_user.id, course_id=course_id, viewed_at=datetime.datetime.utcnow())
+        db.add(lh)
+    else:
+        lh.viewed_at = datetime.datetime.utcnow()
+
+    if current_user.profile:
+        current_user.profile.last_active_date = datetime.datetime.utcnow()
+
     db.commit()
+
+    # Real-time Attentive Knowledge Tracing (AKT) trigger
+    try:
+        from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+        AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+        AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+    except Exception as exc:
+        pass
 
     return {
         "success": True,
         "lesson_id": lesson.id,
         "progress_percent": pct,
+        "next_lesson_id": next_incomplete_lesson.id if next_incomplete_lesson else None,
         "is_course_finished": pct >= 100.0
     }
 
@@ -247,16 +348,40 @@ def check_activity_answer(
                 Progress.lesson_id == lesson.id
             ).first()
             if not prog:
-                # Learners usually answer the practice question before marking the lesson complete.
                 prog = Progress(
                     enrollment_id=enrollment.id,
                     module_id=lesson.module_id,
                     lesson_id=lesson.id,
-                    completed=False
+                    completed=False,
+                    updated_at=datetime.datetime.utcnow()
                 )
                 db.add(prog)
             prog.activity_completed = True
+            prog.updated_at = datetime.datetime.utcnow()
+            
+            # Record in LearningHistory
+            lh = db.query(LearningHistory).filter(
+                LearningHistory.user_id == current_user.id,
+                LearningHistory.course_id == course_id
+            ).first()
+            if not lh:
+                lh = LearningHistory(user_id=current_user.id, course_id=course_id, viewed_at=datetime.datetime.utcnow())
+                db.add(lh)
+            else:
+                lh.viewed_at = datetime.datetime.utcnow()
+
+            if current_user.profile:
+                current_user.profile.last_active_date = datetime.datetime.utcnow()
+
             db.commit()
+
+            # Real-time Attentive Knowledge Tracing (AKT) trigger
+            try:
+                from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+                AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, current_user.id)
+                AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, current_user.id)
+            except Exception:
+                pass
 
     return {
         "is_correct": is_correct,

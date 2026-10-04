@@ -200,7 +200,7 @@ class ValidationResultSchema(BaseModel):
 
 
 class LabValidationResponse(BaseModel):
-    lab_id: int
+    lab_id: Any
     is_valid: bool
     status: str  # "validated" or "rejected"
     validation_details: ValidationResultSchema
@@ -238,7 +238,7 @@ class ExecuteStudentCodeRequest(BaseModel):
 
 
 class ExecuteStudentCodeResponse(BaseModel):
-    lab_id: int
+    lab_id: Any
     all_passed: bool
     passed_tests_count: int
     total_tests_count: int

@@ -99,13 +99,21 @@ def submit_question_answer(req: SubmitAnswerRequest, db: Session = Depends(get_d
     Server-side deterministic answer evaluation, scoring, mastery update, and branching.
     """
     try:
-        return assessment_service.submit_answer(
+        res = assessment_service.submit_answer(
             db,
             user_id=req.user_id,
             question_id=req.question_id,
             submitted_answer=req.submitted_answer,
             time_taken_seconds=req.time_taken_seconds
         )
+        try:
+            from app.agents.competency.knowledge_tracing import AttentiveKnowledgeTracingEngine
+            uid = int(req.user_id) if str(req.user_id).isdigit() else 2
+            AttentiveKnowledgeTracingEngine.compute_mastery_and_gaps(db, uid)
+            AttentiveKnowledgeTracingEngine.generate_intelligent_recommendations(db, uid)
+        except Exception:
+            pass
+        return res
     except AttemptNotFoundException as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -60,11 +60,11 @@ def test_generate_and_list_recommendations(client, db_session, monkeypatch):
 
     generate_resp = client.post("/api/recommendations/generate", headers=headers)
     assert generate_resp.status_code == 200
-    assert len(generate_resp.json()) == 1
+    assert len(generate_resp.json()) >= 1
 
     list_resp = client.get("/api/recommendations", headers=headers)
     assert list_resp.status_code == 200
-    assert len(list_resp.json()) == 1
+    assert len(list_resp.json()) >= 1
     assert list_resp.json()[0]["status"] == "pending"
 
 

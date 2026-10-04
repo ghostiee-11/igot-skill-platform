@@ -8,11 +8,13 @@ This catalogue defines ownership. See [migration status](../migration/status.md)
 | Gateway | 8000 | none | Public routing, legacy API compatibility, bounded aggregation |
 | Identity | 8101 | `identity` | Accounts, credentials, roles, profiles, onboarding, departments |
 | Learning | 8102 | `learning` | Published curriculum, enrollments, progress, assignments, certificates, learning read models |
-| Assessment | 8103 | `assessment` | Exams, quizzes, attempts, specialist engines, grading and result production |
+| Assessment | 8103 | `assessment` | Exams, quizzes, attempts, specialist/interview sessions, grading, results and interview speech adapter |
 | Competency | 8104 | `competency` | Taxonomy, evidence mappings, evidence ledger, targets, scores, gaps, recommendations |
-| AI | 8105 | none | Model provider calls, generation, assistant workflows and provider-backed speech adapters |
+| AI | 8105 | none | Model provider calls, JSON/text generation and assistant workflows |
 | Content | 8106 | `content` | Source resources, uploads, extraction, ingestion jobs and publication workflow |
-| Labs | 8107 | `labs` | Session lifecycle, access, execution records, artifact references and cleanup |
+| Labs | 8107 | `labs` | Session lifecycle, access, execution records, artifact references and cleanup operations (expiry scheduling remains pending) |
+
+Additional Compose processes: `assessment-events` shares the assessment image and delivers its outbox through HTTP; `content-worker` shares the content image and consumes RabbitMQ jobs. `local-seed`, `lab-workspace-image` and `lab-target-demo-image` are one-shot startup jobs. Their successful state is `Exited (0)`. See [Docker runtime guide](../operations/docker-local.md) and [executed verification](../local-runtime-2026-10-04.md).
 
 ## Responsibilities that cross services
 

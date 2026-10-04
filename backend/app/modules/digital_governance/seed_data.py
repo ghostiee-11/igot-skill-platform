@@ -94,8 +94,9 @@ def seed_digital_governance_curriculum(db: Session):
     l1_1 = Lesson(
         module_id=m1.id,
         title="Lesson 1: Statutory Mandate of CERT-In & Mandatory 6-Hour Reporting",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=3Hpd_1O5F9o",
         content="""# Statutory Mandate of CERT-In & Mandatory 6-Hour Incident Reporting
 
 The **Indian Computer Emergency Response Team (CERT-In)** functions under Section 70B of the **Information Technology Act, 2000** as the national nodal agency for responding to computer security incidents.
@@ -129,8 +130,9 @@ Under the provisions of sub-section (6) of section 70B of the IT Act, CERT-In is
     l1_2 = Lesson(
         module_id=m1.id,
         title="Lesson 2: SOC Authentication Telemetry & Incident Triage",
-        content_type="lab",
+        content_type="video",
         duration_minutes=30,
+        video_url="https://www.youtube.com/watch?v=v3iUx2SNspY",
         content="""# SOC Authentication Telemetry & Incident Triage
 
 Security Operations Center (SOC) analysts in government infrastructure continuously monitor authentication logs to protect sensitive public portals (such as PFMS, e-Office, and state treasury databases).
@@ -173,8 +175,9 @@ When investigating brute-force and credential-stuffing incidents (such as *Opera
     l2_1 = Lesson(
         module_id=m2.id,
         title="Lesson 1: Obligations of Data Fiduciaries & Significant Data Fiduciaries",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=76fcelayw00",
         content="""# Obligations of Data Fiduciaries under the DPDP Act 2023
 
 Enacted in August 2023, the **Digital Personal Data Protection Act, 2023 (DPDP Act)** regulates the processing of digital personal data in India.
@@ -209,8 +212,9 @@ Entities designated as SDFs (based on volume, sensitivity, and national security
     l2_2 = Lesson(
         module_id=m2.id,
         title="Lesson 2: Consent Standards, Notice & Citizens' Rights",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=wLlQMNbH7wk",
         content="""# Consent Standards, Notice & Enforcement under DPDP Act 2023
 
 ### Standard of Valid Consent (Section 6)
@@ -257,8 +261,9 @@ The Schedule prescribes stringent monetary penalties:
     l3_1 = Lesson(
         module_id=m3.id,
         title="Lesson 1: Cryptographic Foundations of Class 3 DSC & PKI Hierarchy",
-        content_type="reading",
+        content_type="video",
         duration_minutes=20,
+        video_url="https://www.youtube.com/watch?v=yUeI4nqvNs8",
         content="""# Cryptographic Foundations of Class 3 DSC & India's PKI Hierarchy
 
 In official governance, electronic documents and procurement tenders must satisfy the highest levels of authenticity, non-repudiation, and integrity.
@@ -292,8 +297,9 @@ Under the **Information Technology Act, 2000 (Sections 17–34)**:
     l3_2 = Lesson(
         module_id=m3.id,
         title="Lesson 2: e-Office Implementation & Non-Repudiation under Section 65B",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=jbBe4AS5pk0",
         content="""# e-Office Implementation & Non-Repudiation under Section 65B
 
 The Government of India's **e-Office** system (developed by NIC) has digitized secretariat files and inter-ministerial correspondence.
@@ -334,8 +340,9 @@ Under **Section 65B of the Indian Evidence Act, 1872** (and corresponding provis
     l4_1 = Lesson(
         module_id=m4.id,
         title="Lesson 1: The MeghRaj Architecture & MeitY Empanelment Standards",
-        content_type="reading",
+        content_type="video",
         duration_minutes=20,
+        video_url="https://www.youtube.com/watch?v=BH7SdE0nX5k",
         content="""# The MeghRaj Architecture & MeitY Empanelment Standards
 
 The Government of India launched the **GI Cloud initiative (named "MeghRaj")** to accelerate e-services delivery while optimizing government ICT spending.
@@ -364,8 +371,9 @@ Before a CSP can host government applications:
     l4_2 = Lesson(
         module_id=m4.id,
         title="Lesson 2: Sovereign Data Localization, Tenant Isolation & Audits",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=70oYrSnRgoI",
         content="""# Sovereign Data Localization, Tenant Isolation & Security Audits
 
 When civil servants architect e-governance systems (such as land records, health registries, or DBT databases) on cloud platforms, national sovereignty principles apply.
@@ -406,8 +414,9 @@ When civil servants architect e-governance systems (such as land records, health
     l5_1 = Lesson(
         module_id=m5.id,
         title="Lesson 1: Foundational DPI: Aadhaar Authentication & DigiLocker Gateways",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=YyXAxDD4wuQ",
         content="""# Foundational DPI: Aadhaar Authentication & DigiLocker Gateways
 
 India's **Digital Public Infrastructure (DPI / India Stack)** provides population-scale digital building blocks that enable inclusive public service delivery.
@@ -437,8 +446,9 @@ Operated under Rule 9A of the **Information Technology (Preservation and Retenti
     l5_2 = Lesson(
         module_id=m5.id,
         title="Lesson 2: Public Financial Management (PFMS DBT) & API Setu Interoperability",
-        content_type="reading",
+        content_type="video",
         duration_minutes=25,
+        video_url="https://www.youtube.com/watch?v=aL5vxyHzr1w",
         content="""# Public Financial Management (PFMS DBT) & API Setu Interoperability
 
 ### Direct Benefit Transfer (DBT) & PFMS
