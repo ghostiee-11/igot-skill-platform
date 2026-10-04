@@ -53,7 +53,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml ps -a
 docker compose --env-file .env -f infra/compose/docker-compose.yml down
 ```
 
-Compose `--build` startup is also supported. Sequential builds reduce memory spikes on Windows; they are not a requirement to rename the project or recreate databases. The helper never modifies Docker Desktop/WSL configuration automatically.
+Compose `--build` startup is also supported. Sequential builds reduce memory spikes on Windows; they are not a requirement to rename the project or recreate databases. Ordinary startup never modifies Docker Desktop/WSL configuration automatically. For the known Windows AF_UNIX socket failure only, `scripts/start-local.ps1 -RepairDockerDesktop -SkipBuild` explicitly invokes the guarded `scripts/repair-docker-desktop.ps1` workaround before startup. It preserves runtime directories, checks stopped processes and probes engine availability; it does not erase data or change WSL settings.
 
 ## Persistent state
 

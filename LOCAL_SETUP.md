@@ -130,6 +130,14 @@ For the separation between repository configuration, host-specific recovery and 
 
 An error containing `initializing Inference manager` / `dockerInference` or `initializing Secrets Engine` / `engine.sock` can prevent Docker itself from starting. These are Docker Desktop host runtime sockets, not application images. On the audited Windows host, individual sockets were inaccessible even after Docker stopped. Preserving and renaming their parent runtime directories allowed Docker to recreate them, with images and volumes retained.
 
+Use the explicit Windows recovery/start mode when that error recurs:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1 -RepairDockerDesktop -SkipBuild
+```
+
+The optional mode stops Desktop, verifies its processes have exited, preserves both temporary runtime directories under unique names, restarts Desktop hidden, and probes the engine before Compose startup. It never deletes Docker images/volumes/WSL data or changes WSL memory settings. It is a workaround for the recurring host socket failure, not a claim that the underlying Windows/Desktop cause is fixed. Ordinary startup does not run this recovery step.
+
 Stop Docker using `docker desktop stop --force --timeout 20` first. Verify no Docker Desktop/backend process remains, then preserve the affected runtime directory under a unique name (`%LOCALAPPDATA%/Docker/run` or `%LOCALAPPDATA%/docker-secrets-engine`) and restart Docker Desktop. Do not rename or delete its `wsl` data directory. See [Docker's matching issue report](https://github.com/docker/desktop-feedback/issues/554). A Windows restart may be needed if runtime directories remain inaccessible.
 
 Separate `unexpected EOF` build failures on this host correlated with Windows Resource-Exhaustion-Detector low-virtual-memory events. Its Windows paging file is fixed at 4 GB. WSL's previous 12 GB limit was backed up and lowered to 2 GB with 8 GB swap; a full WSL shutdown was needed to apply the limit. Avoid parallel builds and keep the stack stopped while compiling on this host. No Windows reboot, factory reset or volume removal was performed.

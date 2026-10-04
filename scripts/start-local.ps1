@@ -1,15 +1,18 @@
-param([switch]$SkipBuild)
+param([switch]$SkipBuild, [switch]$RepairDockerDesktop)
 
 $ErrorActionPreference = 'Stop'
 $repoPath = Split-Path -Parent $PSScriptRoot
 Push-Location $repoPath
 try {
+    if ($RepairDockerDesktop) {
+        & (Join-Path $PSScriptRoot 'repair-docker-desktop.ps1')
+    }
     if (-not (Test-Path -LiteralPath '.env')) {
         Copy-Item -LiteralPath '.env.example' -Destination '.env'
     }
     docker info --format '{{.ServerVersion}}'
     if ($LASTEXITCODE -ne 0) {
-        throw 'Start Docker Desktop with Linux containers before running this script. See LOCAL_SETUP.md for socket-error recovery.'
+        throw 'Start Docker Desktop with Linux containers first. For the documented Windows socket failure, use -RepairDockerDesktop -SkipBuild; see LOCAL_SETUP.md.'
     }
     $composeArgs = @('compose', '--env-file', '.env', '-f', 'infra/compose/docker-compose.yml')
     docker @composeArgs config --quiet

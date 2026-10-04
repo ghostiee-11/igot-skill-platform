@@ -66,6 +66,8 @@ See [local setup](../LOCAL_SETUP.md), [architecture](architecture/service-archit
 
 ## Remaining issues / next work
 
+Post-merge host follow-up: PR #2 merged into `main` at `cae5c48` with all 24 checks successful; local main fast-forwarded cleanly and preserved `0d0f6d2`/LMS ancestry. Docker Desktop had stopped and its same inference socket error recurred during restart. A guarded optional `-RepairDockerDesktop` startup mode is implemented on `codex/docker-startup-recovery`. PowerShell 5.1 syntax checks passed; the actual combined recovery/start command succeeded and restored the healthy stack with data retained. It preserves both stopped runtime directories, probes the engine and never changes WSL settings or removes data. Follow-up PR delivery is active. This is a recurring host workaround, not a reversal of the successful repository merge or proof of a permanent Windows/Desktop bug fix.
+
 Local startup and core usability repair are complete. Repository delivery is tracked in [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); check its current GitHub state and the checkout branch before continuing rather than relying on historical branch labels. Keep the stack running for the user. No additional implementation work is required for the validated local-runtime scope; remaining work is listed below.
 
 - Frontend lint still has 81 errors / 102 warnings; production build passes.

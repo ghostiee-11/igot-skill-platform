@@ -1,5 +1,11 @@
 # 📜 Repository Changelog
 
+## 2026-10-04 — Guarded Windows Docker restart recovery
+
+- `[devops]` Added explicit `start-local.ps1 -RepairDockerDesktop -SkipBuild` mode and a standalone guarded recovery command. It stops Desktop, checks stopped processes, preserves the two temporary socket parent directories under unique names, restarts hidden and bounds engine probes before Compose startup. Docker/WSL data and memory settings are untouched.
+- `[docs]` Documented recurrence after the successful LMS PR merge, the host-level socket failure and the workaround's limits. Added PowerShell syntax validation to CI.
+- Executed: PowerShell 5.1 syntax checks and actual socket recovery/start completed successfully; the local stack is healthy again. This is a reusable workaround, not a permanent OS/Desktop fix.
+
 ## 2026-10-04 — Runtime documentation and PR preparation
 
 - `[docs]` Reconciled root README, local setup, development workflow, service/Docker ownership, readiness and migration status. Archived the old monolith development guide with clear historical labelling; retained the pre-LMS main baseline instead of rewriting its history.
