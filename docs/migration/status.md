@@ -1,6 +1,6 @@
 # Service migration status
 
-Last updated: 2026-10-04. LMS source branch: `rebuild/lms`; target: `main` through the user-authorized pull request. Production data cutover is separate.
+Last updated: 2026-10-04. LMS source branch: `rebuild/lms`; default/target: `main` through [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2), whose live GitHub state records the integration result. Production data cutover is separate.
 
 ## Current local evidence (2026-10-04)
 

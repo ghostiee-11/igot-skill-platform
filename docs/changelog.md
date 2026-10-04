@@ -4,7 +4,7 @@
 
 - `[docs]` Reconciled root README, local setup, development workflow, service/Docker ownership, readiness and migration status. Archived the old monolith development guide with clear historical labelling; retained the pre-LMS main baseline instead of rewriting its history.
 - `[devops]` Aligned CI with module-based pytest invocation and the production webpack build. Added Dockerfile/Compose lifecycle comments and documented worker/one-shot states, volumes and explicit bootstrap versus legacy import.
-- Executed: 75 Python tests, four event-schema/eight API contract checks, 100 local Markdown links, complete sequential build/start, frontend production compilation/TypeScript and authenticated gateway smoke after restart. User authorized commit, PR and merge into main; repository delivery is tracked in [handoff](HANDOFF.md).
+- Executed: 75 Python tests, four event-schema/eight API contract checks, 100 local Markdown links, complete sequential build/start, frontend production compilation/TypeScript and authenticated gateway smoke after restart. Repair commit `d851676` was published through [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); its GitHub state is the authoritative merge record. Continuity is in [handoff](HANDOFF.md).
 
 ## 2026-10-04 — Dark hero action hover contrast
 

@@ -53,4 +53,4 @@ The old `backend/`, `content-pipeline/` and `supabase/` remain migration referen
 
 ## Branch workflow
 
-The pre-LMS `main` baseline is commit `0d0f6d2` (the earlier service-architecture PR merge). `rebuild/lms` adds LMS changes on top of that baseline. The user has authorized documentation cleanup, a repair commit, and a pull request from `rebuild/lms` into `main`; the actual merge result is recorded in [HANDOFF.md](docs/HANDOFF.md). Code merging does not import legacy learner data, reset Docker volumes or authorize production cutover.
+The pre-LMS `main` baseline is commit `0d0f6d2` (the earlier service-architecture PR merge). `rebuild/lms` adds LMS changes and documented local-runtime repairs on top of that baseline. [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2) is the authoritative integration/check/merge record; [HANDOFF.md](docs/HANDOFF.md) contains continuity and verification details. Code merging does not import legacy learner data, reset Docker volumes or authorize production cutover.

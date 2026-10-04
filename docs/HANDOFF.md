@@ -6,7 +6,7 @@ Updated: 2026-10-04 (Asia/Calcutta). Owner: primary coding agent; no delegation.
 
 User wants the ground-truth `rebuild/lms` branch usable locally, with Docker repair as the priority. The local Compose stack is running: frontend, gateway, seven domain services, PostgreSQL and RabbitMQ are healthy; assessment-event and content workers are running; bootstrap jobs exited successfully.
 
-Repository delivery: the user explicitly authorized documentation cleanup, committing the repairs on `rebuild/lms`, a PR targeting `main`, then its merge on 2026-10-04. Documentation and local verification are complete; commit/PR delivery follows. Implementation source is `rebuild/lms`; target/default branch is `main`. Pre-LMS `main` baseline: `0d0f6d2`.
+Repository delivery: the user explicitly authorized documentation cleanup, committing the repairs on `rebuild/lms`, a PR targeting `main`, then its merge on 2026-10-04. Documentation and local verification are complete. Repair commit `d851676` was pushed and [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2) was created with the verified changes. That PR's GitHub state/checks/merge commit are the authoritative delivery record, so this handoff does not freeze a transient pre-merge status. Implementation source is `rebuild/lms`; default/target branch is `main`. Pre-LMS `main` baseline: `0d0f6d2`; use a merge commit to retain it and the LMS commit history.
 
 Frontend: http://localhost:3000. The in-app browser is signed into the standard learner, enrolled in the CPI course, with a verified concept answer. All three login-screen demo personas authenticate. Detailed executed evidence and remaining limits: [local runtime receipt](local-runtime-2026-10-04.md). The earlier [read-only audit](local-validation-2026-10-04.md) describes the state before repair.
 
@@ -66,7 +66,7 @@ See [local setup](../LOCAL_SETUP.md), [architecture](architecture/service-archit
 
 ## Remaining issues / next work
 
-Local startup and core usability repair are complete. Finish the authorized documentation/commit/PR/merge delivery after verification. Keep the stack running for the user.
+Local startup and core usability repair are complete. Repository delivery is tracked in [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); check its current GitHub state and the checkout branch before continuing rather than relying on historical branch labels. Keep the stack running for the user. No additional implementation work is required for the validated local-runtime scope; remaining work is listed below.
 
 - Frontend lint still has 81 errors / 102 warnings; production build passes.
 - Provider speech/live-model calls and password recovery require configuration; fallback interview/quiz behavior was verified.
