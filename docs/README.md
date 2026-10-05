@@ -9,6 +9,7 @@ Start with the current runtime. Historical documents are retained for provenance
 | [Repository overview](../README.md) | Application layout, current runtime and branch workflow |
 | [Local setup](../LOCAL_SETUP.md) | Authoritative startup, configuration, test and stop commands |
 | [Docker runtime guide](operations/docker-local.md) | Image/process inventory, startup order, storage, health and recovery |
+| [Vercel frontend deployment](operations/vercel-frontend.md) | Remote frontend build, requested alias and deferred API connection |
 | [Handoff](HANDOFF.md) | Current work, decisions, executed evidence and next steps |
 | [Executed local verification](local-runtime-2026-10-04.md) | Actual runtime checks and limitations |
 | [Development workflow](development.md) | Daily contribution/testing workflow with current paths |

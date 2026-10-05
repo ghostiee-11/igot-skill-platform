@@ -22,6 +22,7 @@ __pycache__/
 
 # Next.js build output
 .next/
+.vercel/
 out/
 build/
 dist/
