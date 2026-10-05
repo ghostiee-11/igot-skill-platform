@@ -6,6 +6,8 @@ Updated: 2026-10-05 (Asia/Calcutta). Owner: primary coding agent; no delegation.
 
 The LMS runtime was verified healthy on 2026-10-04 with all APIs, workers and bootstrap jobs working. The latest 2026-10-05 check found Docker Desktop's Linux engine unavailable; do not claim the stack is currently running until it is restarted. The documented recovery/start command preserves existing images and volumes.
 
+Current user instruction (2026-10-05): **do not run locally**. The attempted startup was interrupted, Docker Desktop is not running, and the checkout remains on main. Continue repository/documentation work only; do not launch Docker Desktop, Compose, app servers or local smoke workflows unless the user explicitly asks to resume local execution.
+
 Current Git workflow: PR #2 already merged the LMS rebuild into `main` at `cae5c48`. The user clarified on 2026-10-05 that remaining fixes should be committed directly on current `main`, without another PR. Recovery commit `26bd011` is now a direct follow-up on local main; [PR #3](https://github.com/ghostiee-11/igot-skill-platform/pull/3) is superseded by that direct delivery. Preserve this preference for this recovery follow-up; do not open another PR for it.
 
 Repository delivery: the user explicitly authorized documentation cleanup, committing the repairs on `rebuild/lms`, a PR targeting `main`, then its merge on 2026-10-04. Documentation and local verification are complete. Repair commit `d851676` was pushed and [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2) was created with the verified changes. That PR's GitHub state/checks/merge commit are the authoritative delivery record, so this handoff does not freeze a transient pre-merge status. Implementation source is `rebuild/lms`; default/target branch is `main`. Pre-LMS `main` baseline: `0d0f6d2`; use a merge commit to retain it and the LMS commit history.
@@ -21,7 +23,7 @@ Latest follow-up: fixed the dashboard My Learning hover contrast in `apps/fronte
 - Active runtime is service-based Compose; historical backend/content pipeline remain content and migration references.
 - No legacy database existed in this checkout. Added an explicit local catalogue bootstrap from branch-authored source, not a historical learner-data import.
 - Seed inserts missing catalogue records and refuses conflicting IDs. Existing account credentials/onboarding are preserved; learning read-model snapshots can refresh.
-- User chose to keep existing apps open despite memory pressure. Do not close their apps.
+- User chose to keep existing apps open despite memory pressure. Do not close their apps. The later explicit instruction is to leave this platform stopped locally.
 - No factory reset, Windows reboot or volume deletion occurred. Repository commit/push/PR merge are now explicitly authorized as a separate delivery step.
 
 ## Implemented
@@ -70,7 +72,7 @@ See [local setup](../LOCAL_SETUP.md), [architecture](architecture/service-archit
 
 Post-merge host follow-up: PR #2 merged with all 24 checks successful and preserved `0d0f6d2`/LMS ancestry. Recovery commit `26bd011` adds guarded `-RepairDockerDesktop` startup mode. PowerShell 5.1 syntax checks and the actual recovery/start command passed; all 11 recovery-PR checks passed. It preserves stopped runtime directories, probes the engine and never changes WSL settings or removes data. The user chose direct main delivery instead of merging PR #3. This remains a recurring host workaround, not a permanent Windows/Desktop bug fix. Docker was unavailable at the latest 2026-10-05 status check; no restart was performed during the direct-commit request.
 
-Local startup and core usability repair are complete. Repository delivery is tracked in [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); check its current GitHub state and the checkout branch before continuing rather than relying on historical branch labels. Keep the stack running for the user. No additional implementation work is required for the validated local-runtime scope; remaining work is listed below.
+Local startup and core usability repair were verified previously. Repository delivery is tracked in [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); check its current GitHub state and the checkout branch before continuing rather than relying on historical branch labels. Leave the local stack stopped per the user's current instruction. No additional implementation work is required for the previously validated local-runtime scope; remaining work is listed below.
 
 - Frontend lint still has 81 errors / 102 warnings; production build passes.
 - Provider speech/live-model calls and password recovery require configuration; fallback interview/quiz behavior was verified.
