@@ -1,5 +1,10 @@
 # 📜 Repository Changelog
 
+## 2026-10-05 — Direct main recovery follow-up
+
+- User clarified that PR #2 had already updated main and the recovery change should be committed directly. Carried tested recovery commit `26bd011` onto main without another merge commit; PR #3 is superseded by direct delivery.
+- Updated handoff with actual repository/runtime state: LMS merge complete; recovery helper tested with 11 passing CI checks; latest Docker engine probe unavailable. Existing volumes and configuration were preserved.
+
 ## 2026-10-04 — Guarded Windows Docker restart recovery
 
 - `[devops]` Added explicit `start-local.ps1 -RepairDockerDesktop -SkipBuild` mode and a standalone guarded recovery command. It stops Desktop, checks stopped processes, preserves the two temporary socket parent directories under unique names, restarts hidden and bounds engine probes before Compose startup. Docker/WSL data and memory settings are untouched.

@@ -1,10 +1,12 @@
 # Repository handoff
 
-Updated: 2026-10-04 (Asia/Calcutta). Owner: primary coding agent; no delegation.
+Updated: 2026-10-05 (Asia/Calcutta). Owner: primary coding agent; no delegation.
 
 ## Goal and current state
 
-User wants the ground-truth `rebuild/lms` branch usable locally, with Docker repair as the priority. The local Compose stack is running: frontend, gateway, seven domain services, PostgreSQL and RabbitMQ are healthy; assessment-event and content workers are running; bootstrap jobs exited successfully.
+The LMS runtime was verified healthy on 2026-10-04 with all APIs, workers and bootstrap jobs working. The latest 2026-10-05 check found Docker Desktop's Linux engine unavailable; do not claim the stack is currently running until it is restarted. The documented recovery/start command preserves existing images and volumes.
+
+Current Git workflow: PR #2 already merged the LMS rebuild into `main` at `cae5c48`. The user clarified on 2026-10-05 that remaining fixes should be committed directly on current `main`, without another PR. Recovery commit `26bd011` is now a direct follow-up on local main; [PR #3](https://github.com/ghostiee-11/igot-skill-platform/pull/3) is superseded by that direct delivery. Preserve this preference for this recovery follow-up; do not open another PR for it.
 
 Repository delivery: the user explicitly authorized documentation cleanup, committing the repairs on `rebuild/lms`, a PR targeting `main`, then its merge on 2026-10-04. Documentation and local verification are complete. Repair commit `d851676` was pushed and [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2) was created with the verified changes. That PR's GitHub state/checks/merge commit are the authoritative delivery record, so this handoff does not freeze a transient pre-merge status. Implementation source is `rebuild/lms`; default/target branch is `main`. Pre-LMS `main` baseline: `0d0f6d2`; use a merge commit to retain it and the LMS commit history.
 
@@ -66,7 +68,7 @@ See [local setup](../LOCAL_SETUP.md), [architecture](architecture/service-archit
 
 ## Remaining issues / next work
 
-Post-merge host follow-up: PR #2 merged into `main` at `cae5c48` with all 24 checks successful; local main fast-forwarded cleanly and preserved `0d0f6d2`/LMS ancestry. Docker Desktop had stopped and its same inference socket error recurred during restart. A guarded optional `-RepairDockerDesktop` startup mode is implemented on `codex/docker-startup-recovery`. PowerShell 5.1 syntax checks passed; the actual combined recovery/start command succeeded and restored the healthy stack with data retained. It preserves both stopped runtime directories, probes the engine and never changes WSL settings or removes data. Follow-up PR delivery is active. This is a recurring host workaround, not a reversal of the successful repository merge or proof of a permanent Windows/Desktop bug fix.
+Post-merge host follow-up: PR #2 merged with all 24 checks successful and preserved `0d0f6d2`/LMS ancestry. Recovery commit `26bd011` adds guarded `-RepairDockerDesktop` startup mode. PowerShell 5.1 syntax checks and the actual recovery/start command passed; all 11 recovery-PR checks passed. It preserves stopped runtime directories, probes the engine and never changes WSL settings or removes data. The user chose direct main delivery instead of merging PR #3. This remains a recurring host workaround, not a permanent Windows/Desktop bug fix. Docker was unavailable at the latest 2026-10-05 status check; no restart was performed during the direct-commit request.
 
 Local startup and core usability repair are complete. Repository delivery is tracked in [PR #2](https://github.com/ghostiee-11/igot-skill-platform/pull/2); check its current GitHub state and the checkout branch before continuing rather than relying on historical branch labels. Keep the stack running for the user. No additional implementation work is required for the validated local-runtime scope; remaining work is listed below.
 
