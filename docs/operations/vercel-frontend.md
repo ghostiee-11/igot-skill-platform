@@ -1,6 +1,6 @@
 # Vercel frontend deployment
 
-Requested project/domain: `igotskill` / `igotskill.vercel.app`. Availability and successful deployment must be verified; this document does not claim the alias is deployed yet.
+Deployed and verified on 2026-10-05: [igotskill.vercel.app](https://igotskill.vercel.app). Vercel project: `igotskill`; team: `prathamesh-bhattas-projects`.
 
 User scope: deploy the frontend first and connect the public backend later. Local Docker/application services must remain stopped. Vercel runs the build remotely.
 
@@ -19,6 +19,24 @@ For the frontend-only deployment, set public build variable `NEXT_PUBLIC_API_URL
 
 ## Verification and continuity
 
-Record the actual Vercel team/project, deployment URL, alias, source commit and build outcome after deployment. Check the public landing/login routes and static assets remotely. A deployed frontend is not proof that backend authentication or LMS journeys work.
+- Source commit: `6d23460`; 148 isolated frontend files uploaded (approximately 2.1 MB). Local `.env.local`, `.vercel`, dependencies and build caches were excluded; linking/authentication metadata remain ignored.
+- Deployment: `dpl_CfvgJG697w8D6LAqcSt1Rnk1nDNi`; READY, production target.
+- Immutable deployment URL: [igotskill-53oz3qexk-prathamesh-bhattas-projects.vercel.app](https://igotskill-53oz3qexk-prathamesh-bhattas-projects.vercel.app).
+- [Vercel build inspection](https://vercel.com/prathamesh-bhattas-projects/igotskill/CfvgJG697w8D6LAqcSt1Rnk1nDNi).
+- Actual remote build: Node 22.x, Next.js 16.3.4, webpack compilation, TypeScript and all 30 static pages passed on Vercel's standard 2-core/8-GB build machine.
+- Anonymous HTTP verification: `/`, `/login`, `/about`, `/courses/1` returned 200 with application content, and a referenced CSS asset returned 200.
+- `/api/health` returned 404, matching the intentionally deferred backend. Login, learner data and lab execution are not claimed operational online.
+- Deployment was performed through authenticated CLI source upload. Automatic GitHub-to-Vercel deployments were not configured; future source changes require a CLI redeploy or an explicitly configured Git integration.
+
+## Redeploy remotely
+
+From the repository root, with Vercel CLI authentication available:
+
+```powershell
+npx --yes --package vercel@62.2.0 vercel link --cwd apps/frontend --project igotskill --yes
+npx --yes --package vercel@62.2.0 vercel deploy --prod --yes --cwd apps/frontend --project igotskill --logs
+```
+
+The project's production/preview API variable is currently `/api`. Change it to the eventual public HTTPS gateway URL and redeploy when the user connects Render. These commands upload/build remotely; do not start local Docker or app servers.
 
 Provider/signing/database credentials belong in backend secret configuration, not the public frontend bundle or Markdown. No Vercel token or sign-in device code belongs in committed docs.

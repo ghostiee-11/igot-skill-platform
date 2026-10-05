@@ -1,5 +1,11 @@
 # 📜 Repository Changelog
 
+## 2026-10-05 — Vercel frontend deployment
+
+- `[deployment]` Published the isolated Next.js frontend to `https://igotskill.vercel.app` under project `igotskill`, with Node 22.x, the tested webpack build and versioned Vercel configuration. Local environments/cache/link metadata are excluded from Git/source upload.
+- Executed remotely: compilation, TypeScript and all 30 static pages passed; anonymous landing/login/about/course/CSS checks returned 200. No local services were launched.
+- Backend is explicitly deferred by the user for a later temporary Render deployment. The public API variable is `/api`, which returns 404 until a real gateway is configured. Details/source/deployment record: [Vercel operations](operations/vercel-frontend.md).
+
 ## 2026-10-05 — Direct main recovery follow-up
 
 - User clarified that PR #2 had already updated main and the recovery change should be committed directly. Carried tested recovery commit `26bd011` onto main without another merge commit; PR #3 is superseded by direct delivery.
